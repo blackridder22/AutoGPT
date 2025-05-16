@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto GPT</title>
+    <link rel="stylesheet" href="sidepanel.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-container">
+                <img src="icons/AutoGPT-logo.png" alt="Auto GPT Logo" class="logo">
+                <h2>Auto GPT</h2>
+            </div>
+            <div class="header-controls">
+                <div class="model-selector" style="display: flex; flex-direction: row; gap: 8px; align-items: center;">
+                    <input type="text" id="modelSearchInput" placeholder="Search models..." style="width: 60%;">
+                    <select id="modelSelect" style="width: 40%;">
+                        <optgroup label="Popular Models">
+                            <option value="openai/gpt-4o">OpenAI: GPT-4o</option>
+                            <option value="anthropic/claude-3.5-sonnet">Anthropic: Claude 3.5 Sonnet</option>
+                            <option value="anthropic/claude-3-opus">Anthropic: Claude 3 Opus</option>
+                            <option value="meta-llama/llama-3.1-70b-instruct">Meta: Llama 3.1 70B</option>
+                            <option value="mistralai/mistral-large">Mistral: Mistral Large</option>
+                        </optgroup>
+                        <optgroup label="Free Models">
+                            <option value="meta-llama/llama-3.3-8b-instruct:free">Meta: Llama 3.3 8B (Free)</option>
+                            <option value="nousresearch/deephermes-3-mistral-24b-preview:free">Nous: DeepHermes 3 Mistral (Free)</option>
+                            <option value="microsoft/phi-4-reasoning:free">Microsoft: Phi-4 Reasoning (Free)</option>
+                            <option value="qwen/qwen3-32b:free">Qwen: Qwen3 32B (Free)</option>
+                            <option value="thudm/glm-z1-32b:free">THUDM: GLM Z1 32B (Free)</option>
+                        </optgroup>
+                        <optgroup label="Cost-Effective">
+                            <option value="mistralai/ministral-8b">Mistral: Ministral 8B</option>
+                            <option value="google/gemini-2.5-flash-preview">Google: Gemini 2.5 Flash</option>
+                            <option value="microsoft/phi-4">Microsoft: Phi-4</option>
+                            <option value="qwen/qwen-2.5-7b-instruct">Qwen: Qwen 2.5 7B</option>
+                        </optgroup>
+                        <optgroup label="Visual Models">
+                            <option value="openai/gpt-4o">OpenAI: GPT-4o (Vision)</option>
+                            <option value="anthropic/claude-3-opus">Claude 3 Opus (Vision)</option>
+                            <option value="mistralai/pixtral-large-2411">Mistral: Pixtral Large</option>
+                            <option value="qwen/qwen2.5-vl-7b-instruct">Qwen: Qwen 2.5 VL 7B</option>
+                        </optgroup>
+                        <optgroup label="Coding Models">
+                            <option value="mistralai/codestral-2501">Mistral: Codestral</option>
+                            <option value="qwen/qwen-2.5-coder-32b-instruct">Qwen: Qwen 2.5 Coder 32B</option>
+                            <option value="deepseek/deepseek-coder">DeepSeek: Coder V2</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <button id="conversationsButton" class="tool-button" title="Conversations">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button id="settingsButton" class="settings-button" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19.14 12.94C19.18 12.64 19.2 12.33 19.2 12C19.2 11.68 19.18 11.36 19.13 11.06L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.89 11.06C4.84 11.36 4.8 11.69 4.8 12C4.8 12.31 4.82 12.64 4.87 12.94L2.84 14.52C2.66 14.66 2.61 14.93 2.72 15.13L4.64 18.45C4.76 18.67 5.01 18.74 5.23 18.67L7.62 17.71C8.12 18.09 8.65 18.41 9.24 18.65L9.6 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.39 21.19L14.75 18.65C15.34 18.41 15.88 18.09 16.37 17.71L18.76 18.67C18.98 18.75 19.23 18.67 19.35 18.45L21.27 15.13C21.39 14.91 21.34 14.66 21.15 14.52L19.14 12.94ZM12 15.6C10.02 15.6 8.4 13.98 8.4 12C8.4 10.02 10.02 8.4 12 8.4C13.98 8.4 15.6 10.02 15.6 12C15.6 13.98 13.98 15.6 12 15.6Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="chat-history" id="chatHistory">
+            <!-- Chat messages will appear here -->
+            <div class="welcome-message" id="welcomeMessage">
+                <h3>Welcome to Auto GPT!</h3>
+            </div>
+        </div>
+
+        <div class="prompt-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea id="promptInput" placeholder="Message Auto GPT..."></textarea>
+                    <div class="file-attach-wrapper">
+                        <button id="attachFileButton" title="Attach file">
+                            <img src="icons/attach_icon.svg" alt="Attach" class="attach-icon">
+                        </button>
+                        <input type="file" id="fileInput" accept="image/*,application/pdf,text/plain,text/markdown,text/html,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.md,.docx,.html,.txt,.pdf,*/*" style="display: none;">
+                        <div class="file-preview-container" id="filePreviewContainer">
+                            <span id="fileName" class="file-name-display"></span>
+                            <button id="removeFileButton" class="remove-file-button" title="Remove file">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button id="sendButton" title="Send message">
+                    <img src="icons/send_icon.svg" alt="Send" class="send-icon">
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h3>Settings</h3>
+                
+                <div class="settings-section">
+                    <h4>User Profile</h4>
+                    <div class="setting-item">
+                        <label for="userNameInput">Your Name:</label>
+                        <input type="text" id="userNameInput" placeholder="Enter your name">
+                    </div>
+                    <button id="saveUserName" class="save-button">Save Name</button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>API Keys</h4>
+                    <div class="setting-item">
+                        <label for="openRouterKeyInput">OpenRouter API Key:</label>
+                        <input type="password" id="openRouterKeyInput" placeholder="Enter OpenRouter API key">
+                    </div>
+                    <div class="setting-item">
+                        <label for="googleAIKeyInput">GoogleAI API Key (Optional):</label>
+                        <input type="password" id="googleAIKeyInput" placeholder="Enter GoogleAI API key">
+                    </div>
+                    <button id="saveApiKeys" class="save-button">Save Keys</button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Local AI Models</h4>
+                    <div class="setting-item">
+                        <label>LM Studio:</label>
+                        <div class="local-ai-settings">
+                            <input type="text" id="lmStudioUrlInput" placeholder="Enter LM Studio URL (e.g., http://localhost:1234/v1)" value="http://localhost:1234/v1">
+                            <input type="text" id="lmStudioModelInput" placeholder="Model name (e.g., mistral-7b-instruct)">
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>Ollama:</label>
+                        <div class="local-ai-settings">
+                            <input type="text" id="ollamaUrlInput" placeholder="Enter Ollama URL (e.g., http://localhost:11434/api)" value="http://localhost:11434/api">
+                            <input type="text" id="ollamaModelInput" placeholder="Model name (e.g., llama3)">
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="localAIToggle">Use Local AI:</label>
+                        <div class="toggle-container">
+                            <select id="aiSourceSelect">
+                                <option value="openrouter">OpenRouter (Cloud)</option>
+                                <option value="lmstudio">LM Studio (Local)</option>
+                                <option value="ollama">Ollama (Local)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="saveLocalAISettings" class="save-button">Save Local AI Settings</button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Supabase Integration</h4>
+                    <div class="setting-item">
+                        <label for="supabaseUrlInput">Supabase URL:</label>
+                        <input type="text" id="supabaseUrlInput" placeholder="https://your-project.supabase.co">
+                    </div>
+                    <div class="setting-item">
+                        <label for="supabaseKeyInput">Supabase API Key:</label>
+                        <input type="password" id="supabaseKeyInput" placeholder="Enter your Supabase API key">
+                    </div>
+                    <div class="setting-item">
+                        <label for="enableSupabaseToggle">Enable Conversation Storage:</label>
+                        <div class="toggle-container">
+                            <select id="storageTypeSelect">
+                                <option value="none">Disabled (No Storage)</option>
+                                <option value="supabase">Supabase</option>
+                                <option value="local">Local (Chrome Storage)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="saveSupabaseSettings" class="save-button">Save Storage Settings</button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Advanced API Options</h4>
+                    <div class="setting-item">
+                        <label for="enableCachingToggle">Enable Prompt Caching:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableCachingToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                        <p class="setting-description">Reduces costs by caching prompts (See OpenRouter docs)</p>
+                    </div>
+                    <div class="setting-item">
+                        <label for="enableMiddleOutToggle">Enable Middle-Out Compression:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="enableMiddleOutToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                        <p class="setting-description">Helps fit longer conversations in context window</p>
+                    </div>
+                    <button id="saveAdvancedSettings" class="save-button">Save Advanced Settings</button>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Theme</h4>
+                    <div class="wallpaper-gallery">
+                        <div class="wallpaper-option active" data-wallpaper="iPhone 17 Concept Wallpapers.jpeg" style="background-image: url('icons/iPhone 17 Concept Wallpapers.jpeg')"></div>
+                        <div class="wallpaper-option" data-wallpaper="1270f605-c783-4cbf-b354-1cceed2a8a1c.jpeg" style="background-image: url('icons/1270f605-c783-4cbf-b354-1cceed2a8a1c.jpeg')"></div>
+                        <div class="wallpaper-option" data-wallpaper="1772fe7b-764a-4f39-bcaf-ef4835dd5d97.jpeg" style="background-image: url('icons/1772fe7b-764a-4f39-bcaf-ef4835dd5d97.jpeg')"></div>
+                        <div class="wallpaper-option" data-wallpaper="da3472c1-d996-484f-8700-b21eb4d0e501.jpeg" style="background-image: url('icons/da3472c1-d996-484f-8700-b21eb4d0e501.jpeg')"></div>
+                        <div class="wallpaper-option" data-wallpaper="db1edd7b-31db-4829-8eff-ca952a0709e5.jpeg" style="background-image: url('icons/db1edd7b-31db-4829-8eff-ca952a0709e5.jpeg')"></div>
+                        <div class="wallpaper-option" data-wallpaper="_.jpeg" style="background-image: url('icons/_.jpeg')"></div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="accentColorPicker">Accent Color:</label>
+                        <input type="color" id="accentColorPicker" value="#007bff">
+                    </div>
+                    <button id="saveTheme" class="save-button">Save Theme</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversations Modal -->
+        <div id="conversationsModal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h3>Your Conversations</h3>
+                
+                <div class="setting-item">
+                    <input type="text" id="newConversationInput" placeholder="New conversation title...">
+                    <button id="createConversationBtn" class="save-button">Create New</button>
+                </div>
+                
+                <div class="conversation-list" id="conversationList">
+                    <!-- Conversations will be listed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="lib/pdf.min.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="document-parser.js"></script>
+    <script src="lib/marked.min.js"></script>
+    <script src="sidepanel.js"></script>
+</body>
+</html>
