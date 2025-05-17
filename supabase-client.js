@@ -122,7 +122,17 @@ class SupabaseClient {
             return {};
         }
 
-        return await response.json();
+        try {
+            const text = await response.text();
+            // Handle empty response
+            if (!text.trim()) {
+                return {};
+            }
+            return JSON.parse(text);
+        } catch (error) {
+            console.error("Error parsing JSON response:", error);
+            throw new Error(`Failed to parse Supabase response: ${error.message}`);
+        }
     }
 
     async createConversation(title, userId = null, model = null, settings = {}) {
@@ -353,4 +363,4 @@ class SupabaseClient {
 }
 
 // Export the class
-window.SupabaseClient = SupabaseClient; 
+window.SupabaseClient = SupabaseClient;

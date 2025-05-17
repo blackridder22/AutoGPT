@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameInput = document.getElementById('userNameInput');
     const saveUserNameButton = document.getElementById('saveUserName');
     const openRouterKeyInput = document.getElementById('openRouterKeyInput');
+    const googleAIKeyInput = document.getElementById('googleAIKeyInput');
     const openAIKeyInput = document.getElementById('openAIKeyInput');
     const anthropicKeyInput = document.getElementById('anthropicKeyInput');
     const saveApiKeysButton = document.getElementById('saveApiKeys');
@@ -37,6 +38,102 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize document parser and file handling variables
     const documentParser = new DocumentParser();
     console.log("Document parser initialized:", documentParser ? "success" : "failed");
+
+    // --- BEGIN Reasoning display feature ---
+    function injectReasoningStyles() {
+        const styleId = 'reasoning-styles';
+        if (document.getElementById(styleId)) {
+            return; // Styles already injected
+        }
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            .reasoning-toggle-button {
+                cursor: pointer;
+                color: var(--accent-color, #007bff);
+                text-decoration: none;
+                display: inline-block;
+                margin-top: 8px;
+                margin-bottom: 4px;
+                font-style: normal;
+                padding: 4px 8px;
+                border: 1px solid var(--accent-color, #007bff);
+                border-radius: 4px;
+                font-size: 0.9em;
+                user-select: none;
+            }
+            .reasoning-toggle-button:hover {
+                background-color: rgba(0, 123, 255, 0.1);
+            }
+            .reasoning-content {
+                display: none;
+                margin-top: 5px;
+                padding: 10px;
+                background-color: var(--message-bg-color, rgba(128, 128, 128, 0.05));
+                border: 1px solid var(--border-color, #eee);
+                border-radius: 4px;
+                position: relative;
+                overflow: hidden;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .reasoning-content.open {
+                display: block;
+            }
+            .reasoning-content.shimmering::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(
+                    to right,
+                    transparent 20%,
+                    rgba(255, 255, 255, 0.4) 50%,
+                    transparent 80%
+                );
+                animation: shimmer 1.2s linear infinite;
+            }
+            @keyframes shimmer {
+                0% { left: -100%; }
+                100% { left: 100%; }
+            }
+            .typewriter-cursor {
+                display: inline-block;
+                width: 2px;
+                height: 1em;
+                background-color: currentColor;
+                animation: blink 0.7s infinite;
+                margin-left: 1px;
+                vertical-align: baseline;
+            }
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    async function typewriterEffect(element, text, speed = 30) {
+        element.innerHTML = ''; // Clear previous content
+        const cursor = document.createElement('span');
+        cursor.className = 'typewriter-cursor';
+        
+        const textNode = document.createTextNode('');
+        element.appendChild(textNode);
+        element.appendChild(cursor);
+
+        for (let i = 0; i < text.length; i++) {
+            textNode.nodeValue += text[i];
+            await new Promise(resolve => setTimeout(resolve, speed));
+        }
+        cursor.remove(); // Remove cursor when done typing plain text
+    }
+
+    injectReasoningStyles(); // Inject styles on load
+    // --- END Reasoning display feature ---
     
     // File variables
     let attachedFile = null;
@@ -312,47 +409,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save all API keys
     saveApiKeysButton.addEventListener('click', () => {
         const openRouterKey = openRouterKeyInput.value.trim();
+        // Ensure googleAIKeyInput is defined before accessing its value
+        const googleAIKey = googleAIKeyInput ? googleAIKeyInput.value.trim() : ''; 
         const openAIKey = openAIKeyInput.value.trim();
         const anthropicKey = anthropicKeyInput.value.trim();
-        const googleAIKey = googleAIKeyInput.value.trim();
         
         const keysToSave = {};
-        
-        if (openRouterKey && openRouterKey !== '••••••••••••••••••••') {
+        let changed = false;
+
+        // Helper to check if a key should be updated
+        const shouldUpdateKey = (currentValue, inputField) => {
+            if (!inputField) return false; // Guard against null inputField
+            // If the input field is empty (currentValue), it means the user wants to clear it.
+            // Or if the input field has a new value (not the placeholder text).
+            return currentValue === '' || inputField.value !== '••••••••••••••••••••';
+        };
+
+        if (openRouterKeyInput && shouldUpdateKey(openRouterKey, openRouterKeyInput)) {
             keysToSave.openRouterApiKey = openRouterKey;
+            changed = true;
         }
-        
-        if (openAIKey && openAIKey !== '••••••••••••••••••••') {
-            keysToSave.openAIApiKey = openAIKey;
-        }
-        
-        if (anthropicKey && anthropicKey !== '••••••••••••••••••••') {
-            keysToSave.anthropicApiKey = anthropicKey;
-        }
-        
-        if (googleAIKey && googleAIKey !== '••••••••••••••••••••') {
+        if (googleAIKeyInput && shouldUpdateKey(googleAIKey, googleAIKeyInput)) {
             keysToSave.googleAIKey = googleAIKey;
+            changed = true;
         }
-        
-        if (Object.keys(keysToSave).length > 0) {
+        if (openAIKeyInput && shouldUpdateKey(openAIKey, openAIKeyInput)) {
+            keysToSave.openAIKey = openAIKey;
+            changed = true;
+        }
+        if (anthropicKeyInput && shouldUpdateKey(anthropicKey, anthropicKeyInput)) {
+            keysToSave.anthropicApiKey = anthropicKey;
+            changed = true;
+        }
+
+        if (changed) {
             chrome.storage.local.set(keysToSave, () => {
-                // Mask the values after saving
-                if (keysToSave.openRouterApiKey) {
-                    openRouterKeyInput.value = '••••••••••••••••••••';
+                // Update input fields after saving
+                if (keysToSave.hasOwnProperty('openRouterApiKey') && openRouterKeyInput) {
+                    openRouterKeyInput.value = keysToSave.openRouterApiKey ? '••••••••••••••••••••' : '';
                 }
-                
-                if (keysToSave.openAIApiKey) {
-                    openAIKeyInput.value = '••••••••••••••••••••';
+                if (keysToSave.hasOwnProperty('googleAIKey') && googleAIKeyInput) {
+                    googleAIKeyInput.value = keysToSave.googleAIKey ? '••••••••••••••••••••' : '';
                 }
-                
-                if (keysToSave.anthropicApiKey) {
-                    anthropicKeyInput.value = '••••••••••••••••••••';
+                if (keysToSave.hasOwnProperty('openAIKey') && openAIKeyInput) {
+                    openAIKeyInput.value = keysToSave.openAIKey ? '••••••••••••••••••••' : '';
                 }
-                
-                if (keysToSave.googleAIKey) {
-                    googleAIKeyInput.value = '••••••••••••••••••••';
+                if (keysToSave.hasOwnProperty('anthropicApiKey') && anthropicKeyInput) {
+                    anthropicKeyInput.value = keysToSave.anthropicApiKey ? '••••••••••••••••••••' : '';
                 }
-                
                 showToast('API keys saved successfully!');
             });
         } else {
@@ -1364,40 +1468,83 @@ document.addEventListener('DOMContentLoaded', () => {
                 const aiType = localAISettings.aiSource;
                 const modelName = aiType === 'lmstudio' ? localAISettings.lmStudioModel : localAISettings.ollamaModel;
                 const baseUrl = aiType === 'lmstudio' ? localAISettings.lmStudioUrl : localAISettings.ollamaUrl;
-                
                 if (!baseUrl || !modelName) {
                     throw new Error(`${aiType === 'lmstudio' ? 'LM Studio' : 'Ollama'} settings not configured`);
                 }
-                
-                const apiUrl = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
-                
+                let apiUrl;
+                if (aiType === 'lmstudio') {
+                    apiUrl = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
+                } else {
+                    apiUrl = `${baseUrl.replace(/\/$/, '')}/api/generate`;
+                }
                 console.log(`Using Local AI (${aiType}): ${modelName}`);
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: modelName,
-                        messages: messages,
-                        max_tokens: 2048,
-                        temperature: 0.7,
-                        stream: false
-                    })
-        });
-
-        if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`Local AI error: ${errorData.error || response.statusText}`);
-        }
-
-        const data = await response.json();
-                // If reasoning is present, return as {content, reasoning}
-                const content = data.choices?.[0]?.message?.content || "No response received from the model.";
-                const reasoning = data.choices?.[0]?.message?.reasoning || null;
-                return { content, reasoning };
-                
+                if (aiType === 'ollama') {
+                    // Use Ollama's /api/generate endpoint (non-streaming)
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            model: modelName,
+                            prompt: messages[messages.length - 1].content,
+                            stream: false // Changed to false
+                        })
+                    });
+                    if (!response.ok) {
+                        // Try to parse error response, but handle cases where it might not be JSON
+                        let errorDetail = response.statusText;
+                        try {
+                            const errorData = await response.json();
+                            errorDetail = errorData.error || errorDetail;
+                        } catch (e) {
+                            // If response is not JSON, use text or statusText
+                            try {
+                                errorDetail = await response.text() || errorDetail;
+                            } catch (e_text) {
+                                // fallback to statusText
+                            }
+                        }
+                        throw new Error(`Ollama error (${response.status}): ${errorDetail}`);
+                    }
+                    
+                    // Handle non-streamed response
+                    const responseData = await response.json();
+                    if (responseData && typeof responseData.response === 'string') { // Check if responseData.response exists and is a string
+                        const result = responseData.response;
+                        // Update the last message in chat
+                        const lastMsg = chatHistory.lastElementChild;
+                        if (lastMsg && lastMsg.querySelector('.markdown-body')) { // Ensure element exists
+                            lastMsg.querySelector('.markdown-body').innerHTML = renderMarkdown(result);
+                        }
+                        return { content: result, reasoning: null };
+                    } else {
+                        // Log the actual responseData for debugging if it's not as expected
+                        console.error("Ollama unexpected response format:", responseData);
+                        throw new Error('Ollama error: Invalid response format or no response content.');
+                    }
+                } else {
+                    // LM Studio logic (unchanged)
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: modelName,
+                            messages: messages,
+                            max_tokens: 2048,
+                            temperature: 0.7,
+                            stream: false
+                        })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`Local AI error: ${errorData.error || response.statusText}`);
+                    }
+                    const data = await response.json();
+                    const content = data.choices?.[0]?.message?.content || "No response received from the model.";
+                    const reasoning = data.choices?.[0]?.message?.reasoning || null;
+                    return { content, reasoning };
+                }
             } catch (error) {
                 console.error("Local AI Error:", error);
                 throw new Error(`Local AI error: ${error.message}`);
@@ -1458,9 +1605,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                         }
                                         if (reasoningDelta) {
                                             reasoning += reasoningDelta;
-                                            // If dropdown is open, update reasoning content
+                                            // Update reasoning content regardless of dropdown state
                                             if (lastMsg) {
-                                                const contentDiv = lastMsg.querySelector('.reasoning-content.open');
+                                                const contentDiv = lastMsg.querySelector('.reasoning-content');
                                                 if (contentDiv) {
                                                     contentDiv.innerHTML = renderMarkdown(reasoning);
                                                 }
@@ -1496,35 +1643,37 @@ document.addEventListener('DOMContentLoaded', () => {
         p.className = 'markdown-body';
         p.innerHTML = renderMarkdown(text);
         messageDiv.appendChild(p);
-        // If reasoning is present, add dropdown
-        if (reasoning !== null || reasoningStream !== null) {
-            const dropdown = document.createElement('div');
-            dropdown.className = 'reasoning-dropdown';
-            const toggle = document.createElement('div');
-            toggle.className = 'reasoning-toggle';
-            toggle.textContent = 'Show Reasoning';
-            const content = document.createElement('div');
-            content.className = 'reasoning-content';
-            if (reasoningStream) {
-                content.innerHTML = `<span class="shimmer">Streaming reasoning...</span>`;
-            } else {
-                content.innerHTML = renderMarkdown(reasoning || '');
-            }
-            toggle.addEventListener('click', () => {
-                content.classList.toggle('open');
-                if (content.classList.contains('open')) {
-                    toggle.textContent = 'Hide Reasoning';
-                    if (reasoningStream) {
-                        // Replace shimmer with streamed reasoning
-                        content.innerHTML = renderMarkdown(reasoningStream());
-                    }
+        // If reasoning is present, add interactive display
+        if (reasoning !== null || (typeof reasoningStream === 'function')) {
+            const reasoningContainer = document.createElement('div');
+
+            const toggleButton = document.createElement('span');
+            toggleButton.className = 'reasoning-toggle-button';
+            toggleButton.textContent = 'reasoning';
+
+            const reasoningContent = document.createElement('div');
+            reasoningContent.className = 'reasoning-content markdown-body'; // Added markdown-body for styling
+            reasoningContent.classList.add('shimmering'); // Always add shimmer for real-time effect
+
+            toggleButton.addEventListener('click', () => {
+                const isOpen = reasoningContent.classList.contains('open');
+                if (isOpen) {
+                    reasoningContent.classList.remove('open');
+                    toggleButton.textContent = 'reasoning';
                 } else {
-                    toggle.textContent = 'Show Reasoning';
+                    toggleButton.textContent = 'hide reasoning';
+                    reasoningContent.classList.add('open');
                 }
             });
-            dropdown.appendChild(toggle);
-            dropdown.appendChild(content);
-            messageDiv.appendChild(dropdown);
+
+            reasoningContainer.appendChild(toggleButton);
+            reasoningContainer.appendChild(reasoningContent);
+            messageDiv.appendChild(reasoningContainer);
+            
+            // Initialize with content if available immediately
+            if (reasoning !== null) {
+                reasoningContent.innerHTML = renderMarkdown(reasoning);
+            }
         }
         chatHistory.appendChild(messageDiv);
         chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -1667,9 +1816,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Use GoogleAI key for Google models, fallback to OpenRouter key
     async function getApiKeyForModel(modelId) {
         return await new Promise(resolve => {
-            chrome.storage.local.get(['openRouterApiKey', 'googleAIKey'], (result) => {
+            chrome.storage.local.get(['openRouterApiKey', 'googleAIKey', 'openAIKey', 'anthropicApiKey'], (result) => {
                 if (modelId.startsWith('google/')) {
                     if (result.googleAIKey) return resolve(result.googleAIKey);
+                }
+                if (modelId.startsWith('openai/')) {
+                    if (result.openAIKey) return resolve(result.openAIKey);
+                }
+                if (modelId.startsWith('anthropic/')) {
+                    if (result.anthropicApiKey) return resolve(result.anthropicApiKey);
                 }
                 if (result.openRouterApiKey) return resolve(result.openRouterApiKey);
                 // Fallback to OpenRouter public key
