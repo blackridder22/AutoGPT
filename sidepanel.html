@@ -17,42 +17,6 @@
                 <h2>Auto GPT</h2>
             </div>
             <div class="header-controls">
-                <div class="model-selector" style="display: flex; flex-direction: row; gap: 8px; align-items: center;">
-                    <input type="text" id="modelSearchInput" placeholder="Search models..." style="width: 60%;">
-                    <select id="modelSelect" style="width: 40%;">
-                        <optgroup label="Popular Models">
-                            <option value="openai/gpt-4o">OpenAI: GPT-4o</option>
-                            <option value="anthropic/claude-3.5-sonnet">Anthropic: Claude 3.5 Sonnet</option>
-                            <option value="anthropic/claude-3-opus">Anthropic: Claude 3 Opus</option>
-                            <option value="meta-llama/llama-3.1-70b-instruct">Meta: Llama 3.1 70B</option>
-                            <option value="mistralai/mistral-large">Mistral: Mistral Large</option>
-                        </optgroup>
-                        <optgroup label="Free Models">
-                            <option value="meta-llama/llama-3.3-8b-instruct:free">Meta: Llama 3.3 8B (Free)</option>
-                            <option value="nousresearch/deephermes-3-mistral-24b-preview:free">Nous: DeepHermes 3 Mistral (Free)</option>
-                            <option value="microsoft/phi-4-reasoning:free">Microsoft: Phi-4 Reasoning (Free)</option>
-                            <option value="qwen/qwen3-32b:free">Qwen: Qwen3 32B (Free)</option>
-                            <option value="thudm/glm-z1-32b:free">THUDM: GLM Z1 32B (Free)</option>
-                        </optgroup>
-                        <optgroup label="Cost-Effective">
-                            <option value="mistralai/ministral-8b">Mistral: Ministral 8B</option>
-                            <option value="google/gemini-2.5-flash-preview">Google: Gemini 2.5 Flash</option>
-                            <option value="microsoft/phi-4">Microsoft: Phi-4</option>
-                            <option value="qwen/qwen-2.5-7b-instruct">Qwen: Qwen 2.5 7B</option>
-                        </optgroup>
-                        <optgroup label="Visual Models">
-                            <option value="openai/gpt-4o">OpenAI: GPT-4o (Vision)</option>
-                            <option value="anthropic/claude-3-opus">Claude 3 Opus (Vision)</option>
-                            <option value="mistralai/pixtral-large-2411">Mistral: Pixtral Large</option>
-                            <option value="qwen/qwen2.5-vl-7b-instruct">Qwen: Qwen 2.5 VL 7B</option>
-                        </optgroup>
-                        <optgroup label="Coding Models">
-                            <option value="mistralai/codestral-2501">Mistral: Codestral</option>
-                            <option value="qwen/qwen-2.5-coder-32b-instruct">Qwen: Qwen 2.5 Coder 32B</option>
-                            <option value="deepseek/deepseek-coder">DeepSeek: Coder V2</option>
-                        </optgroup>
-                    </select>
-                </div>
                 <button id="conversationsButton" class="tool-button" title="Conversations">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="currentColor"/>
@@ -114,53 +78,12 @@
                 </div>
                 
                 <div class="settings-section">
-                    <h4>API Keys</h4>
+                    <h4>Webhook URL</h4>
                     <div class="setting-item">
-                        <label for="openRouterKeyInput">OpenRouter API Key:</label>
-                        <input type="password" id="openRouterKeyInput" placeholder="Enter OpenRouter API key">
+                        <label for="webhookUrlInput">Webhook URL:</label>
+                        <input type="text" id="webhookUrlInput" placeholder="Enter Webhook URL">
                     </div>
-                    <div class="setting-item">
-                        <label for="googleAIKeyInput">GoogleAI API Key (Optional):</label>
-                        <input type="password" id="googleAIKeyInput" placeholder="Enter GoogleAI API key">
-                    </div>
-                    <div class="setting-item">
-                        <label for="openAIKeyInput">OpenAI API Key (Optional):</label>
-                        <input type="password" id="openAIKeyInput" placeholder="Enter OpenAI API key">
-                    </div>
-                    <div class="setting-item">
-                        <label for="anthropicKeyInput">Anthropic API Key (Optional):</label>
-                        <input type="password" id="anthropicKeyInput" placeholder="Enter Anthropic API key">
-                    </div>
-                    <button id="saveApiKeys" class="save-button">Save Keys</button>
-                </div>
-                
-                <div class="settings-section">
-                    <h4>Local AI Models</h4>
-                    <div class="setting-item">
-                        <label>LM Studio:</label>
-                        <div class="local-ai-settings">
-                            <input type="text" id="lmStudioUrlInput" placeholder="Enter LM Studio URL (e.g., http://localhost:1234)" value="http://localhost:1234">
-                            <input type="text" id="lmStudioModelInput" placeholder="Model name (e.g., mistral-7b-instruct)">
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label>Ollama:</label>
-                        <div class="local-ai-settings">
-                            <input type="text" id="ollamaUrlInput" placeholder="Enter Ollama URL (e.g., http://localhost:11434)" value="http://localhost:11434">
-                            <input type="text" id="ollamaModelInput" placeholder="Model name (e.g., llama3)">
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label for="localAIToggle">Use Local AI:</label>
-                        <div class="toggle-container">
-                            <select id="aiSourceSelect">
-                                <option value="openrouter">OpenRouter (Cloud)</option>
-                                <option value="lmstudio">LM Studio (Local)</option>
-                                <option value="ollama">Ollama (Local)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button id="saveLocalAISettings" class="save-button">Save Local AI Settings</button>
+                    <button id="saveWebhookUrlButton" class="save-button">Save Webhook URL</button>
                 </div>
                 
                 <div class="settings-section">
@@ -184,27 +107,6 @@
                         </div>
                     </div>
                     <button id="saveSupabaseSettings" class="save-button">Save Storage Settings</button>
-                </div>
-                
-                <div class="settings-section">
-                    <h4>Advanced API Options</h4>
-                    <div class="setting-item">
-                        <label for="enableCachingToggle">Enable Prompt Caching:</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="enableCachingToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </div>
-                        <p class="setting-description">Reduces costs by caching prompts (See OpenRouter docs)</p>
-                    </div>
-                    <div class="setting-item">
-                        <label for="enableMiddleOutToggle">Enable Middle-Out Compression:</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="enableMiddleOutToggle" checked>
-                            <span class="toggle-slider"></span>
-                        </div>
-                        <p class="setting-description">Helps fit longer conversations in context window</p>
-                    </div>
-                    <button id="saveAdvancedSettings" class="save-button">Save Advanced Settings</button>
                 </div>
                 
                 <div class="settings-section">

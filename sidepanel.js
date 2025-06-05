@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameDisplay = document.getElementById('fileName');
     const filePreviewContainer = document.getElementById('filePreviewContainer');
     const removeFileButton = document.getElementById('removeFileButton');
-    const modelSelect = document.getElementById('modelSelect');
+    // const modelSelect = document.getElementById('modelSelect'); // Removed
     
     // Settings elements
     const settingsButton = document.getElementById('settingsButton');
@@ -15,25 +15,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeButton = document.querySelector('.close-button');
     const userNameInput = document.getElementById('userNameInput');
     const saveUserNameButton = document.getElementById('saveUserName');
-    const openRouterKeyInput = document.getElementById('openRouterKeyInput');
-    const googleAIKeyInput = document.getElementById('googleAIKeyInput');
-    const openAIKeyInput = document.getElementById('openAIKeyInput');
-    const anthropicKeyInput = document.getElementById('anthropicKeyInput');
-    const saveApiKeysButton = document.getElementById('saveApiKeys');
+    // const openRouterKeyInput = document.getElementById('openRouterKeyInput'); // Removed
+    // const googleAIKeyInput = document.getElementById('googleAIKeyInput'); // Removed
+    // const openAIKeyInput = document.getElementById('openAIKeyInput'); // Removed
+    // const anthropicKeyInput = document.getElementById('anthropicKeyInput'); // Removed
+    // const saveApiKeysButton = document.getElementById('saveApiKeys'); // Removed
+    const webhookUrlInput = document.getElementById('webhookUrlInput'); // Added
+    const saveWebhookUrlButton = document.getElementById('saveWebhookUrlButton'); // Added
     const accentColorPicker = document.getElementById('accentColorPicker');
     const saveThemeButton = document.getElementById('saveTheme');
     const wallpaperOptions = document.querySelectorAll('.wallpaper-option');
     
-    // Local AI settings elements
-    const lmStudioUrlInput = document.getElementById('lmStudioUrlInput');
-    const lmStudioModelInput = document.getElementById('lmStudioModelInput');
-    const ollamaUrlInput = document.getElementById('ollamaUrlInput');
-    const ollamaModelInput = document.getElementById('ollamaModelInput');
-    const aiSourceSelect = document.getElementById('aiSourceSelect');
-    const saveLocalAISettings = document.getElementById('saveLocalAISettings');
+    // Local AI settings elements - REMOVED
+    // const lmStudioUrlInput = document.getElementById('lmStudioUrlInput');
+    // const lmStudioModelInput = document.getElementById('lmStudioModelInput');
+    // const ollamaUrlInput = document.getElementById('ollamaUrlInput');
+    // const ollamaModelInput = document.getElementById('ollamaModelInput');
+    // const aiSourceSelect = document.getElementById('aiSourceSelect');
+    // const saveLocalAISettings = document.getElementById('saveLocalAISettings');
 
-    // OpenRouter API URL
-    const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+    // OpenRouter API URL - REMOVED
+    // const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
     
     // Initialize document parser and file handling variables
     const documentParser = new DocumentParser();
@@ -360,24 +362,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle model selection changes
-    modelSelect.addEventListener('change', function() {
-        const selectedModel = this.value;
-        const isPaid = !selectedModel.includes(':free');
+    // Handle model selection changes - REMOVED
+    // modelSelect.addEventListener('change', function() {
+    //     const selectedModel = this.value;
+    //     const isPaid = !selectedModel.includes(':free');
         
-        if (isPaid) {
-            // Check if we have an API key
-            chrome.storage.local.get(['openRouterApiKey'], (result) => {
-                if (!result.openRouterApiKey) {
-                    addModelInfoMessage(selectedModel, true);
-                } else {
-                    addModelInfoMessage(selectedModel, false);
-                }
-            });
-        } else {
-            addModelInfoMessage(selectedModel, false);
-        }
-    });
+    //     if (isPaid) {
+    //         // Check if we have an API key
+    //         chrome.storage.local.get(['openRouterApiKey'], (result) => {
+    //             if (!result.openRouterApiKey) {
+    //                 addModelInfoMessage(selectedModel, true);
+    //             } else {
+    //                 addModelInfoMessage(selectedModel, false);
+    //             }
+    //         });
+    //     } else {
+    //         addModelInfoMessage(selectedModel, false);
+    //     }
+    // });
 
     // Settings Modal functionality
     settingsButton.addEventListener('click', () => {
@@ -406,63 +408,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Save all API keys
-    saveApiKeysButton.addEventListener('click', () => {
-        const openRouterKey = openRouterKeyInput.value.trim();
-        // Ensure googleAIKeyInput is defined before accessing its value
-        const googleAIKey = googleAIKeyInput ? googleAIKeyInput.value.trim() : ''; 
-        const openAIKey = openAIKeyInput.value.trim();
-        const anthropicKey = anthropicKeyInput.value.trim();
-        
-        const keysToSave = {};
-        let changed = false;
-
-        // Helper to check if a key should be updated
-        const shouldUpdateKey = (currentValue, inputField) => {
-            if (!inputField) return false; // Guard against null inputField
-            // If the input field is empty (currentValue), it means the user wants to clear it.
-            // Or if the input field has a new value (not the placeholder text).
-            return currentValue === '' || inputField.value !== '••••••••••••••••••••';
-        };
-
-        if (openRouterKeyInput && shouldUpdateKey(openRouterKey, openRouterKeyInput)) {
-            keysToSave.openRouterApiKey = openRouterKey;
-            changed = true;
-        }
-        if (googleAIKeyInput && shouldUpdateKey(googleAIKey, googleAIKeyInput)) {
-            keysToSave.googleAIKey = googleAIKey;
-            changed = true;
-        }
-        if (openAIKeyInput && shouldUpdateKey(openAIKey, openAIKeyInput)) {
-            keysToSave.openAIKey = openAIKey;
-            changed = true;
-        }
-        if (anthropicKeyInput && shouldUpdateKey(anthropicKey, anthropicKeyInput)) {
-            keysToSave.anthropicApiKey = anthropicKey;
-            changed = true;
-        }
-
-        if (changed) {
-            chrome.storage.local.set(keysToSave, () => {
-                // Update input fields after saving
-                if (keysToSave.hasOwnProperty('openRouterApiKey') && openRouterKeyInput) {
-                    openRouterKeyInput.value = keysToSave.openRouterApiKey ? '••••••••••••••••••••' : '';
-                }
-                if (keysToSave.hasOwnProperty('googleAIKey') && googleAIKeyInput) {
-                    googleAIKeyInput.value = keysToSave.googleAIKey ? '••••••••••••••••••••' : '';
-                }
-                if (keysToSave.hasOwnProperty('openAIKey') && openAIKeyInput) {
-                    openAIKeyInput.value = keysToSave.openAIKey ? '••••••••••••••••••••' : '';
-                }
-                if (keysToSave.hasOwnProperty('anthropicApiKey') && anthropicKeyInput) {
-                    anthropicKeyInput.value = keysToSave.anthropicApiKey ? '••••••••••••••••••••' : '';
-                }
-                showToast('API keys saved successfully!');
+    // Save Webhook URL
+    saveWebhookUrlButton.addEventListener('click', () => {
+        const webhookUrl = webhookUrlInput.value.trim();
+        if (webhookUrl) {
+            chrome.storage.local.set({ webhookUrl: webhookUrl }, () => {
+                showToast('Webhook URL saved successfully!');
             });
         } else {
-            showToast('No changes to save.', true);
+            showToast('Webhook URL cannot be empty.', true);
         }
     });
+
+    // Save all API keys - REMOVED
+    // saveApiKeysButton.addEventListener('click', () => { ... });
 
     // Wallpaper selection
     for (const option of wallpaperOptions) {
@@ -493,41 +452,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Save local AI settings
-    saveLocalAISettings.addEventListener('click', () => {
-        const lmStudioUrl = lmStudioUrlInput.value.trim();
-        const lmStudioModel = lmStudioModelInput.value.trim();
-        const ollamaUrl = ollamaUrlInput.value.trim();
-        const ollamaModel = ollamaModelInput.value.trim();
-        const aiSource = aiSourceSelect.value;
-        
-        chrome.storage.local.set({
-            localAI: {
-                lmStudioUrl,
-                lmStudioModel,
-                ollamaUrl,
-                ollamaModel,
-                aiSource
-            }
-        }, () => {
-            showToast('Local AI settings saved!');
-            
-            // If using local AI, update UI to reflect which model is active
-            if (aiSource !== 'openrouter') {
-                const aiType = aiSource === 'lmstudio' ? 'LM Studio' : 'Ollama';
-                const modelName = aiSource === 'lmstudio' ? lmStudioModel : ollamaModel;
-                
-                if (modelName) {
-                    showLocalAIActiveToast(aiType, modelName);
-                }
-            }
-        });
-    });
+    // Save local AI settings - REMOVED
+    // saveLocalAISettings.addEventListener('click', () => { ... });
     
-    // Function to show which local AI is active
-    function showLocalAIActiveToast(aiType, modelName) {
-        showToast(`${aiType} model "${modelName}" is now active`);
-    }
+    // Function to show which local AI is active - REMOVED
+    // function showLocalAIActiveToast(aiType, modelName) { ... }
 
     function clearFileInput() {
         attachedFile = null;
@@ -585,57 +514,32 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadSettingsValues() {
         chrome.storage.local.get([
             'userName', 
-            'openRouterApiKey', 
-            'openAIApiKey', 
-            'anthropicApiKey', 
-            'theme',
-            'localAI',
-            'googleAIKey'
+            // 'openRouterApiKey', // Removed
+            // 'openAIApiKey', // Removed
+            // 'anthropicApiKey', // Removed
+            // 'googleAIKey', // Removed
+            // 'localAI', // Removed
+            'webhookUrl', // Added
+            'theme'
         ], (result) => {
             // Set user name
             if (result.userName) {
                 userNameInput.value = result.userName;
             }
             
-            // Set API keys (masked)
-            if (result.openRouterApiKey) {
-                openRouterKeyInput.value = '••••••••••••••••••••';
+            // Set Webhook URL
+            if (result.webhookUrl) {
+                webhookUrlInput.value = result.webhookUrl;
             }
             
-            if (result.openAIApiKey) {
-                openAIKeyInput.value = '••••••••••••••••••••';
-            }
+            // Set API keys (masked) - REMOVED
+            // if (result.openRouterApiKey) { ... }
+            // if (result.openAIApiKey) { ... }
+            // if (result.anthropicApiKey) { ... }
+            // if (result.googleAIKey) { ... }
             
-            if (result.anthropicApiKey) {
-                anthropicKeyInput.value = '••••••••••••••••••••';
-            }
-            
-            if (result.googleAIKey) {
-                googleAIKeyInput.value = '••••••••••••••••••••';
-            }
-            
-            // Set local AI settings
-            if (result.localAI) {
-                if (result.localAI.lmStudioUrl) {
-                    lmStudioUrlInput.value = result.localAI.lmStudioUrl;
-                }
-                
-                if (result.localAI.lmStudioModel) {
-                    lmStudioModelInput.value = result.localAI.lmStudioModel;
-                }
-                
-                if (result.localAI.ollamaUrl) {
-                    ollamaUrlInput.value = result.localAI.ollamaUrl;
-                }
-                
-                if (result.localAI.ollamaModel) {
-                    ollamaModelInput.value = result.localAI.ollamaModel;
-                }
-                
-                if (result.localAI.aiSource) {
-                    aiSourceSelect.value = result.localAI.aiSource;
-                }
-            }
+            // Set local AI settings - REMOVED
+            // if (result.localAI) { ... }
             
             // Set theme
             if (result.theme) {
@@ -718,55 +622,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // Display model information
-    function addModelInfoMessage(modelId, needsKey) {
-        // This function is now empty - we don't show model info messages anymore
-        return;
-    }
+    // Display model information - REMOVED
+    // function addModelInfoMessage(modelId, needsKey) { ... }
 
     updateSendButtonState();
     promptInput.focus();
     
-    // Show initial model info when loading the extension
-    const initialModel = modelSelect.value;
-    const isInitialModelPaid = !initialModel.includes(':free');
+    // Show initial model info when loading the extension - REMOVED
+    // const initialModel = modelSelect.value;
+    // const isInitialModelPaid = !initialModel.includes(':free');
     
-    chrome.storage.local.get(['openRouterApiKey'], (result) => {
-        addModelInfoMessage(initialModel, isInitialModelPaid && !result.openRouterApiKey);
-    });
+    // chrome.storage.local.get(['openRouterApiKey'], (result) => {
+    //     addModelInfoMessage(initialModel, isInitialModelPaid && !result.openRouterApiKey);
+    // });
 
-    // Save advanced API settings
-    const saveAdvancedSettingsButton = document.getElementById('saveAdvancedSettings');
-    const enableCachingToggle = document.getElementById('enableCachingToggle');
-    const enableMiddleOutToggle = document.getElementById('enableMiddleOutToggle');
+    // Save advanced API settings - REMOVED
+    // const saveAdvancedSettingsButton = document.getElementById('saveAdvancedSettings');
+    // const enableCachingToggle = document.getElementById('enableCachingToggle');
+    // const enableMiddleOutToggle = document.getElementById('enableMiddleOutToggle');
     
-    if (saveAdvancedSettingsButton) {
-        saveAdvancedSettingsButton.addEventListener('click', () => {
-            const enableCaching = enableCachingToggle.checked;
-            const enableMiddleOut = enableMiddleOutToggle.checked;
-            
-            chrome.storage.local.set({
-                advancedApiSettings: {
-                    enableCaching,
-                    enableMiddleOut
-                }
-            }, () => {
-                showToast('Advanced API settings saved!');
-            });
-        });
-    }
+    // if (saveAdvancedSettingsButton) { ... }
     
-    // Load advanced API settings from storage
-    chrome.storage.local.get(['advancedApiSettings'], (result) => {
-        if (result.advancedApiSettings) {
-            if (enableCachingToggle) {
-                enableCachingToggle.checked = result.advancedApiSettings.enableCaching !== false;
-            }
-            if (enableMiddleOutToggle) {
-                enableMiddleOutToggle.checked = result.advancedApiSettings.enableMiddleOut !== false;
-            }
-        }
-    });
+    // Load advanced API settings from storage - REMOVED
+    // chrome.storage.local.get(['advancedApiSettings'], (result) => { ... });
 
     const conversationsButton = document.getElementById('conversationsButton');
     const conversationsModal = document.getElementById('conversationsModal');
@@ -993,8 +871,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (storageSettings.type === 'supabase' && supabaseClient) {
                 // Create in Supabase
-                const model = modelSelect.value;
-                const conversation = await supabaseClient.createConversation(title, null, model);
+                // const model = modelSelect.value; // Removed modelSelect
+                const conversation = await supabaseClient.createConversation(title, null, null); // Pass null for model
                 newId = conversation.id;
             } else if (storageSettings.type === 'local') {
                 // Create in local storage
@@ -1004,7 +882,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: title,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                    model: modelSelect.value,
+                    // model: modelSelect.value, // Removed modelSelect
+                    model: null, // Set model to null
                     messages: []
                 };
                 
@@ -1229,38 +1108,13 @@ document.addEventListener('DOMContentLoaded', () => {
             currentConversationId = await createNewConversation("New Conversation");
         }
 
-        // Get local AI settings to determine if we need an API key
-        const localAISettings = await new Promise(resolve => {
-            chrome.storage.local.get(['localAI'], (result) => {
-                resolve(result.localAI || { aiSource: 'openrouter' });
-            });
-        });
+        // Get local AI settings to determine if we need an API key - REMOVED
+        // const localAISettings = await new Promise(resolve => { ... });
         
-        const usingLocalAI = localAISettings.aiSource !== 'openrouter';
+        // const usingLocalAI = localAISettings.aiSource !== 'openrouter'; // REMOVED
         
-        // Only check for OpenRouter API key if not using local AI
-        if (!usingLocalAI) {
-            const apiKeyResult = await new Promise(resolve => {
-                chrome.storage.local.get(['openRouterApiKey'], (result) => {
-                    resolve(result.openRouterApiKey);
-                });
-            });
-
-            if (!apiKeyResult) {
-                addMessageToChat("Please set your OpenRouter API Key first.", 'ai-message error');
-                return;
-            }
-        } else {
-            // Check if local AI model is set
-            const modelName = localAISettings.aiSource === 'lmstudio' 
-                ? localAISettings.lmStudioModel 
-                : localAISettings.ollamaModel;
-                
-            if (!modelName) {
-                addMessageToChat(`Please set a model name for ${localAISettings.aiSource === 'lmstudio' ? 'LM Studio' : 'Ollama'} in settings.`, 'ai-message error');
-                return;
-            }
-        }
+        // Only check for OpenRouter API key if not using local AI - REMOVED
+        // if (!usingLocalAI) { ... } else { ... }
 
         // --- NEW: Gather conversation history for context window ---
         let conversationHistory = [];
@@ -1353,8 +1207,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            // Get API key (null is OK if using local AI)
-            const apiKey = await getApiKeyForModel(modelSelect.value);
+            // Get API key (null is OK if using local AI) - REMOVED
+            // const apiKey = await getApiKeyForModel(modelSelect.value);
 
             // --- NEW: Build full context window for OpenRouter API ---
             // Only keep the last N messages to fit in the context window (e.g., 20)
@@ -1373,15 +1227,74 @@ document.addEventListener('DOMContentLoaded', () => {
             contextMessages.push({ role: 'user', content: combinedMessage });
             // --- END NEW ---
 
-            // When sending to API, use the full context window
-            const responseObj = await callOpenRouterAPI(
-                apiKey, 
-                contextMessages, 
-                attachedFile, 
-                attachedFileBase64, 
-                userName,
-                !!extractedFileContent // Flag indicating we have extracted content
-            );
+            // When sending to API, use the full context window - REPLACED with webhook logic
+            // const responseObj = await callOpenRouterAPI(...);
+
+            // Retrieve the webhookUrl from chrome.storage.local
+            const { webhookUrl } = await new Promise(resolve => {
+                chrome.storage.local.get(['webhookUrl'], result => resolve(result));
+            });
+
+            if (!webhookUrl) {
+                addMessageToChat("Please set your Webhook URL in settings.", 'ai-message error');
+                thinkingMessage?.parentNode?.removeChild(thinkingMessage); // Remove thinking message
+                promptInput.disabled = false; // Re-enable input
+                updateSendButtonState(); // Update send button state
+                return;
+            }
+
+            const payload = {
+                body: {
+                    chatInput: combinedMessage,
+                    sessionId: currentConversationId
+                }
+            };
+
+            let responseObj = { content: '', reasoning: null }; // Initialize responseObj
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `Webhook request failed: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData) || errorMessage;
+                    } catch (e) {
+                        try {
+                            errorMessage = await response.text() || errorMessage;
+                        } catch (e2) {
+                            // ignore
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                if (data && data.input) {
+                    responseObj.content = data.input;
+                    // Optional: If your webhook returns reasoning, extract it here
+                    // responseObj.reasoning = data.reasoning || null;
+                } else {
+                    throw new Error("Invalid response from webhook: 'input' field missing.");
+                }
+
+            } catch (error) {
+                 console.error("Webhook Error:", error);
+                // Remove thinking message if it exists
+                try {
+                    thinkingMessage?.parentNode?.removeChild(thinkingMessage);
+                } catch (e) {
+                    console.warn("Could not remove thinking message:", e);
+                }
+                addMessageToChat(`Error: ${error.message}`, 'ai-message error');
+                // Ensure UI is re-enabled in a finally block outside this try/catch
+                throw error; // Re-throw to be caught by the outer finally
+            }
             
             // Remove thinking message if it exists
             try {
@@ -1435,197 +1348,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Update callOpenRouterAPI to accept contextMessages instead of a single prompt
-    async function callOpenRouterAPI(apiKey, contextMessages, file, fileBase64, userName = null, hasExtractedContent = false) {
-        const localAISettings = await new Promise(resolve => {
-            chrome.storage.local.get(['localAI'], (result) => {
-                resolve(result.localAI || { aiSource: 'openrouter' });
-            });
-        });
-        const advancedSettings = await new Promise(resolve => {
-            chrome.storage.local.get(['advancedApiSettings'], (result) => {
-                resolve(result.advancedApiSettings || { 
-                    enableCaching: true,
-                    enableMiddleOut: true 
-                });
-            });
-        });
-        const usingLocalAI = localAISettings.aiSource !== 'openrouter';
-        let messages = contextMessages;
-        if (userName) {
-            messages = [
-                {
-                    role: "system",
-                    content: `You are Auto GPT, an intelligent AI assistant. You're speaking with ${userName}. Be helpful, concise, and friendly.`
-                },
-                ...messages
-            ];
-        }
-        const selectedModel = modelSelect.value;
-        if (usingLocalAI) {
-            // Call Local AI (Ollama or LM Studio)
-            try {
-                const aiType = localAISettings.aiSource;
-                const modelName = aiType === 'lmstudio' ? localAISettings.lmStudioModel : localAISettings.ollamaModel;
-                const baseUrl = aiType === 'lmstudio' ? localAISettings.lmStudioUrl : localAISettings.ollamaUrl;
-                if (!baseUrl || !modelName) {
-                    throw new Error(`${aiType === 'lmstudio' ? 'LM Studio' : 'Ollama'} settings not configured`);
-                }
-                let apiUrl;
-                if (aiType === 'lmstudio') {
-                    apiUrl = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
-                } else {
-                    apiUrl = `${baseUrl.replace(/\/$/, '')}/api/generate`;
-                }
-                console.log(`Using Local AI (${aiType}): ${modelName}`);
-                if (aiType === 'ollama') {
-                    // Use Ollama's /api/generate endpoint (non-streaming)
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: modelName,
-                            prompt: messages[messages.length - 1].content,
-                            stream: false // Changed to false
-                        })
-                    });
-                    if (!response.ok) {
-                        // Try to parse error response, but handle cases where it might not be JSON
-                        let errorDetail = response.statusText;
-                        try {
-                            const errorData = await response.json();
-                            errorDetail = errorData.error || errorDetail;
-                        } catch (e) {
-                            // If response is not JSON, use text or statusText
-                            try {
-                                errorDetail = await response.text() || errorDetail;
-                            } catch (e_text) {
-                                // fallback to statusText
-                            }
-                        }
-                        throw new Error(`Ollama error (${response.status}): ${errorDetail}`);
-                    }
-                    
-                    // Handle non-streamed response
-                    const responseData = await response.json();
-                    if (responseData && typeof responseData.response === 'string') { // Check if responseData.response exists and is a string
-                        const result = responseData.response;
-                        // Update the last message in chat
-                        const lastMsg = chatHistory.lastElementChild;
-                        if (lastMsg && lastMsg.querySelector('.markdown-body')) { // Ensure element exists
-                            lastMsg.querySelector('.markdown-body').innerHTML = renderMarkdown(result);
-                        }
-                        return { content: result, reasoning: null };
-                    } else {
-                        // Log the actual responseData for debugging if it's not as expected
-                        console.error("Ollama unexpected response format:", responseData);
-                        throw new Error('Ollama error: Invalid response format or no response content.');
-                    }
-                } else {
-                    // LM Studio logic (unchanged)
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            model: modelName,
-                            messages: messages,
-                            max_tokens: 2048,
-                            temperature: 0.7,
-                            stream: false
-                        })
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(`Local AI error: ${errorData.error || response.statusText}`);
-                    }
-                    const data = await response.json();
-                    const content = data.choices?.[0]?.message?.content || "No response received from the model.";
-                    const reasoning = data.choices?.[0]?.message?.reasoning || null;
-                    return { content, reasoning };
-                }
-            } catch (error) {
-                console.error("Local AI Error:", error);
-                throw new Error(`Local AI error: ${error.message}`);
-            }
-        } else {
-            try {
-                if (!apiKey) throw new Error("API Key not provided");
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                };
-                const enableCaching = advancedSettings.enableCaching !== false;
-                const enableMiddleOut = advancedSettings.enableMiddleOut !== false;
-                const requestBody = {
-                    model: selectedModel,
-                    messages: messages,
-                    max_tokens: 2048,
-                    temperature: 0.7,
-                    middle_out: enableMiddleOut,
-                    route: "fallback",
-                    cache: enableCaching,
-                    stream: true // Enable streaming
-                };
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(requestBody)
-                });
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`API error (${response.status}): ${errorData.error || response.statusText}`);
-                }
-                // Stream response
-                const reader = response.body.getReader();
-                let result = '';
-                let reasoning = '';
-                let done = false;
-                while (!done) {
-                    const { value, done: doneReading } = await reader.read();
-                    done = doneReading;
-                    if (value) {
-                        const chunk = new TextDecoder().decode(value);
-                        for (const line of chunk.split('\n')) {
-                            if (line.startsWith('data:')) {
-                                const data = line.replace('data:', '').trim();
-                                if (data && data !== '[DONE]') {
-                                    try {
-                                        const parsed = JSON.parse(data);
-                                        const contentDelta = parsed.choices?.[0]?.delta?.content;
-                                        const reasoningDelta = parsed.choices?.[0]?.delta?.reasoning;
-                                        if (contentDelta) {
-                                            result += contentDelta;
-                                            // Update the last message in chat
-                                            const lastMsg = chatHistory.lastElementChild;
-                                            if (lastMsg) {
-                                                lastMsg.querySelector('.markdown-body').innerHTML = renderMarkdown(result);
-                                            }
-                                        }
-                                        if (reasoningDelta) {
-                                            reasoning += reasoningDelta;
-                                            // Update reasoning content regardless of dropdown state
-                                            if (lastMsg) {
-                                                const contentDiv = lastMsg.querySelector('.reasoning-content');
-                                                if (contentDiv) {
-                                                    contentDiv.innerHTML = renderMarkdown(reasoning);
-                                                }
-                                            }
-                                        }
-                                    } catch (e) {}
-                                }
-                            }
-                        }
-                    }
-                }
-                return { content: result || 'No response received from the model.', reasoning: reasoning || null };
-            } catch (error) {
-                console.error("OpenRouter API Error:", error);
-                throw new Error(`API error: ${error.message}`);
-            }
-        }
-    }
+    // Update callOpenRouterAPI to accept contextMessages instead of a single prompt - REMOVED
+    // async function callOpenRouterAPI(apiKey, contextMessages, file, fileBase64, userName = null, hasExtractedContent = false) { ... }
 
     // Function to add a message to the chat history
     function addMessageToChat(text, className, skipAnimation = false, reasoning = null, reasoningStream = null) {
@@ -1711,63 +1435,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
-    // 1. Load and populate model dropdown with search
-    async function populateModelDropdown(filter = '') {
-        const response = await fetch('model.json');
-        const data = await response.json();
-        const models = data.data;
-        const modelSelect = document.getElementById('modelSelect');
-        modelSelect.innerHTML = '';
+    // 1. Load and populate model dropdown with search - REMOVED
+    // async function populateModelDropdown(filter = '') { ... }
 
-        // Helper to add optgroup
-        function addOptGroup(label, models) {
-            if (models.length === 0) return;
-            const group = document.createElement('optgroup');
-            group.label = label;
-            for (const model of models) {
-                // Filter by search
-                if (filter && !model.name.toLowerCase().includes(filter) && !model.id.toLowerCase().includes(filter)) continue;
-                const option = document.createElement('option');
-                option.value = model.id;
-                option.textContent = model.name;
-                group.appendChild(option);
-            }
-            if (group.children.length > 0) modelSelect.appendChild(group);
-        }
+    // Call on DOMContentLoaded - REMOVED
+    // populateModelDropdown();
 
-        // Filter models by vendor/category
-        const googleModels = models.filter(m => m.id.startsWith('google/gemini'));
-        const openaiModels = models.filter(m => m.id.startsWith('openai/'));
-        const anthropicModels = models.filter(m => m.id.startsWith('anthropic/'));
-        const grokModels = models.filter(m => m.id.startsWith('xai/') || m.id.startsWith('grok/'));
-        const xaiModels = models.filter(m => m.id.startsWith('xai/'));
-        const deepseekModels = models.filter(m => m.id.startsWith('deepseek/'));
-        const freeModels = models.filter(m => m.id.endsWith(':free'));
-        const qwenModels = models.filter(m => m.id.startsWith('qwen/'));
-        const openrouterSpecial = models.filter(m => m.id === 'openrouter/optimus-alpha' || m.id === 'openrouter/quasar-alpha');
-
-        addOptGroup('Google (Gemini)', googleModels);
-        addOptGroup('OpenAI', openaiModels);
-        addOptGroup('Anthropic', anthropicModels);
-        addOptGroup('Grok', grokModels);
-        addOptGroup('X-ai', xaiModels);
-        addOptGroup('Deepseek', deepseekModels);
-        addOptGroup('Qwen', qwenModels);
-        addOptGroup('Free Models', freeModels);
-        addOptGroup('OpenRouter Special', openrouterSpecial);
-    }
-
-    // Call on DOMContentLoaded
-    populateModelDropdown();
-
-    // 2. Add model search/filtering
-    const modelSearchInput = document.getElementById('modelSearchInput');
-    if (modelSearchInput) {
-        modelSearchInput.addEventListener('input', (e) => {
-            const filter = e.target.value.trim().toLowerCase();
-            populateModelDropdown(filter);
-        });
-    }
+    // 2. Add model search/filtering - REMOVED
+    // const modelSearchInput = document.getElementById('modelSearchInput');
+    // if (modelSearchInput) { ... }
 
     // 3. Render chat messages as markdown (fix heading rendering)
     function renderMarkdown(text) {
@@ -1813,66 +1489,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     addShimmerStyle();
 
-    // 2. Use GoogleAI key for Google models, fallback to OpenRouter key
-    async function getApiKeyForModel(modelId) {
-        return await new Promise(resolve => {
-            chrome.storage.local.get(['openRouterApiKey', 'googleAIKey', 'openAIKey', 'anthropicApiKey'], (result) => {
-                if (modelId.startsWith('google/')) {
-                    if (result.googleAIKey) return resolve(result.googleAIKey);
-                }
-                if (modelId.startsWith('openai/')) {
-                    if (result.openAIKey) return resolve(result.openAIKey);
-                }
-                if (modelId.startsWith('anthropic/')) {
-                    if (result.anthropicApiKey) return resolve(result.anthropicApiKey);
-                }
-                if (result.openRouterApiKey) return resolve(result.openRouterApiKey);
-                // Fallback to OpenRouter public key
-                return resolve('org-fallback-key');
-            });
-        });
-    }
+    // 2. Use GoogleAI key for Google models, fallback to OpenRouter key - REMOVED
+    // async function getApiKeyForModel(modelId) { ... }
 
-    // 4. After first user/AI message, update conversation title with AI-generated title (only once)
-    let aiTitleGenerated = false;
-    async function updateConversationTitleWithAI(message) {
-        if (aiTitleGenerated || !currentConversationId) return;
-        aiTitleGenerated = true;
-        // Use OpenRouter to generate a title
-        const apiKey = await getApiKeyForModel(modelSelect.value);
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: modelSelect.value,
-                messages: [
-                    { role: 'system', content: 'Summarize the following conversation in 5 words or less, as a title.' },
-                    { role: 'user', content: message }
-                ],
-                max_tokens: 12
-            })
-        });
-        const data = await response.json();
-        const title = data.choices?.[0]?.message?.content?.replace(/\n/g, '').trim() || 'Conversation';
-        // Update conversation title in storage
-        if (storageSettings.type === 'supabase' && supabaseClient) {
-            await supabaseClient.updateConversationTitle(currentConversationId, title);
-        } else if (storageSettings.type === 'local') {
-            chrome.storage.local.get([`conversation_${currentConversationId}`], (result) => {
-                const convo = result[`conversation_${currentConversationId}`];
-                if (convo) {
-                    convo.title = title;
-                    chrome.storage.local.set({ [`conversation_${currentConversationId}`]: convo });
-                }
-            });
-        }
-        loadConversationsList();
-    }
-    // In handleSendMessage, after first user/AI message:
-    if (!aiTitleGenerated && promptText) {
-        updateConversationTitleWithAI(promptText);
-    }
+    // 4. After first user/AI message, update conversation title with AI-generated title (only once) - REMOVED
+    // let aiTitleGenerated = false; // REMOVED
+    // async function updateConversationTitleWithAI(message) { ... }
+    // In handleSendMessage, after first user/AI message: - REMOVED
+    // if (!aiTitleGenerated && promptText) { ... }
 });
