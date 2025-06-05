@@ -1306,34 +1306,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
-                    let errorText = `Webhook request failed: ${response.status} ${response.statusText}`; // Default error
+                    let errorDetail = response.statusText; // Default error
                     try {
-                        // Attempt to get more detailed error message from response body as text
-                        const serverErrorText = await response.text();
-                        if (serverErrorText) {
-                             errorText = `Error: ${response.status} ${serverErrorText}`;
+                        const errorData = await response.json(); // Try to parse as JSON first
+                        if (typeof errorData === 'object' && errorData !== null) {
+                            // Attempt to extract a more specific error message if available
+                            errorDetail = errorData.message || errorData.error || JSON.stringify(errorData);
+                        } else if (errorData) { // If it's not an object but truthy (e.g. a string from json())
+                             errorDetail = errorData;
                         }
-                    } catch (e) {
-                        // Ignore if reading response text fails, stick with the default errorText
-                        console.warn("Could not read error response text:", e);
+                    } catch (jsonError) {
+                        // If JSON parsing fails, try to get plain text
+                        try {
+                            errorDetail = await response.text();
+                        } catch (textError) {
+                            // If text parsing also fails, stick with statusText
+                             console.warn("Could not parse error response as JSON or text:", textError);
+                        }
                     }
-                    throw new Error(errorText);
+                    throw new Error(`Error: ${response.status} ${errorDetail}`);
                 }
 
-                const llmMessage = await response.text();
-                responseObj.reasoning = null; // Plain text has no reasoning
+                const data = await response.json(); // Expecting JSON response now
+                let llmMessage = null;
+                responseObj.reasoning = null; // Reset reasoning
 
-                if (llmMessage || llmMessage === "") { // Allow empty string if it's a valid response
-                    responseObj.content = llmMessage;
+                if (Array.isArray(data)) {
+                    if (data.length > 0) {
+                        const firstElement = data[0];
+                        if (firstElement && typeof firstElement === 'object' && firstElement.hasOwnProperty('output')) {
+                            llmMessage = firstElement.output;
+                            if (typeof llmMessage !== 'string') {
+                                if (llmMessage === null || typeof llmMessage === 'undefined') {
+                                     throw new Error("Invalid JSON response: 'output' field has null or undefined value.");
+                                }
+                                // Optionally, convert to string if other types are possible but need stringification
+                                // llmMessage = String(llmMessage);
+                            }
+                        } else {
+                            throw new Error("Invalid JSON response: First array element is missing 'output' field or is not an object.");
+                        }
+                    } else {
+                        throw new Error("Invalid JSON response: Received an empty array.");
+                    }
                 } else {
-                    // This case might be redundant if response.text() always resolves
-                    // to a string, even if empty. But as a safeguard:
-                    thinkingMessage?.parentNode?.removeChild(thinkingMessage); // remove thinking message
-                    throw new Error("Webhook returned an empty or invalid response.");
+                    throw new Error("Invalid JSON response: Expected a JSON array.");
                 }
+
+                if (llmMessage === null || typeof llmMessage === 'undefined') {
+                    // This is a fallback, specific errors above are more informative
+                    throw new Error("Failed to extract a valid message from the webhook response.");
+                }
+                responseObj.content = llmMessage;
 
             } catch (error) {
-                 console.error("Webhook Error:", error); // This will catch errors from fetch itself or the new Error thrown
+                 console.error("Webhook Error:", error);
                 // Remove thinking message if it exists
                 try {
                     thinkingMessage?.parentNode?.removeChild(thinkingMessage);
