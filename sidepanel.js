@@ -1,5 +1,80 @@
 // Global variable to store webhooks data
 let appWebhooksData = null;
+let activeWebhookOverrideId = null; // Stores the ID of the webhook selected by slash command
+
+// Function to update the display of the active webhook
+function updateActiveWebhookDisplay() {
+    const displayElement = document.getElementById('activeWebhookDisplay');
+    if (!displayElement) {
+        console.error("activeWebhookDisplay element not found.");
+        return;
+    }
+
+    let displayText = '';
+    let showDisplay = false;
+
+    if (!appWebhooksData || !appWebhooksData.webhooks) {
+        // This case should ideally be rare if initializeWebhooksData ensures appWebhooksData and .webhooks are always arrays
+        displayText = '<span style="color: #ff6b6b;">Webhook data not loaded or invalid.</span>';
+        showDisplay = true;
+    } else if (activeWebhookOverrideId) {
+        const overrideWebhook = appWebhooksData.webhooks.find(wh => wh.id === activeWebhookOverrideId);
+        if (overrideWebhook) {
+            displayText = `Using: <strong>${overrideWebhook.name}</strong> <button id="clearWebhookOverrideBtn" class="clear-override-btn" title="Clear override and use default">✖</button>`;
+            showDisplay = true;
+        } else {
+            console.error("Invalid activeWebhookOverrideId:", activeWebhookOverrideId, "Clearing it.");
+            activeWebhookOverrideId = null; // Clear invalid override and fall through to default logic
+            // No explicit 'else' here, will re-evaluate based on cleared activeWebhookOverrideId in the next conditions
+        }
+    }
+
+    // This block will now execute if activeWebhookOverrideId was null initially, or cleared due to being invalid
+    if (!activeWebhookOverrideId) {
+        if (appWebhooksData.defaultWebhookId) {
+            const defaultWebhook = appWebhooksData.webhooks.find(wh => wh.id === appWebhooksData.defaultWebhookId);
+            if (defaultWebhook) {
+                displayText = `Default: <strong>${defaultWebhook.name}</strong>`;
+                showDisplay = true;
+            } else {
+                // Default ID exists but points to a non-existent webhook
+                displayText = '<span style="color: #ff6b6b;">Default webhook invalid. Please re-set in settings.</span>';
+                showDisplay = true;
+            }
+        } else if (appWebhooksData.webhooks.length > 0) {
+            // No default set, but webhooks exist
+            displayText = '<span style="color: #ffcc00;">No default webhook set. Using first available. Select one in settings.</span>';
+            // Potentially show the first available as a temporary measure, or just the warning.
+            // For now, just the warning to prompt user action.
+            showDisplay = true;
+        } else {
+            // No webhooks configured at all
+            displayText = '<span style="color: #ff6b6b;">No webhooks configured. Add one in settings.</span>';
+            showDisplay = true;
+        }
+    }
+
+
+    displayElement.innerHTML = displayText;
+    displayElement.style.display = showDisplay ? 'block' : 'none';
+
+    // Event listener for the clear override button (if it exists)
+    // Manage listener to avoid duplicates
+    if (displayElement._clearOverrideClickHandler) {
+        displayElement.removeEventListener('click', displayElement._clearOverrideClickHandler);
+    }
+    displayElement._clearOverrideClickHandler = function(event) {
+        const target = event.target;
+        // Check if the click is on the button itself or its direct children (like the '✖' text node if it's not part of the button's innerHTML)
+        if (target.id === 'clearWebhookOverrideBtn' || target.classList.contains('clear-override-btn') || target.closest('.clear-override-btn')) {
+            activeWebhookOverrideId = null;
+            updateActiveWebhookDisplay();
+            const promptInputElement = document.getElementById('promptInput');
+            if (promptInputElement) promptInputElement.focus();
+        }
+    };
+    displayElement.addEventListener('click', displayElement._clearOverrideClickHandler);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const promptInput = document.getElementById('promptInput');
@@ -215,12 +290,148 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get user settings from storage
     loadUserSettings();
     
-    // Handle textarea input and resize
+    // Handle textarea input and resize, and slash commands for webhooks
+    let suggestionsContainer = null; // Keep a reference
+
+    function getOrCreateWebhookSuggestionsContainer() {
+        if (suggestionsContainer && document.body.contains(suggestionsContainer)) {
+            return suggestionsContainer;
+        }
+        suggestionsContainer = document.getElementById('webhookSuggestions');
+        if (!suggestionsContainer) {
+            suggestionsContainer = document.createElement('div');
+            suggestionsContainer.id = 'webhookSuggestions';
+            suggestionsContainer.className = 'suggestions-list'; // For potential CSS styling
+
+            // Basic styling - should be enhanced with CSS
+            suggestionsContainer.style.display = 'none';
+            suggestionsContainer.style.position = 'absolute';
+            suggestionsContainer.style.backgroundColor = 'var(--input-bg-color, #fff)'; // Use theme variable
+            suggestionsContainer.style.border = '1px solid var(--border-color, #ccc)';
+            suggestionsContainer.style.borderRadius = '4px';
+            suggestionsContainer.style.zIndex = '1000'; // Ensure it's on top
+            suggestionsContainer.style.maxHeight = '150px';
+            suggestionsContainer.style.overflowY = 'auto';
+            suggestionsContainer.style.width = promptInput.offsetWidth + 'px'; // Match promptInput width
+
+            // Position below promptInput
+            // Ensure promptInput.parentNode is suitable for relative positioning if needed.
+            // For simplicity, appending to promptInput's parent and using absolute positioning relative to it.
+            if (promptInput.parentNode) {
+                 // Make parent relative if it's not already, for better positioning
+                if (getComputedStyle(promptInput.parentNode).position === 'static') {
+                    promptInput.parentNode.style.position = 'relative';
+                }
+                promptInput.parentNode.appendChild(suggestionsContainer);
+                // Adjust position:
+                suggestionsContainer.style.top = (promptInput.offsetTop + promptInput.offsetHeight) + 'px';
+                suggestionsContainer.style.left = promptInput.offsetLeft + 'px';
+
+            } else {
+                console.error("promptInput parentNode is null, cannot append suggestionsContainer.");
+                document.body.appendChild(suggestionsContainer); // Fallback, might not be positioned correctly
+            }
+        }
+        return suggestionsContainer;
+    }
+
     promptInput.addEventListener('input', () => {
-        promptInput.style.height = 'auto';
+        promptInput.style.height = 'auto'; // Auto-resize textarea
         promptInput.style.height = `${promptInput.scrollHeight}px`;
         updateSendButtonState();
+
+        const text = promptInput.value;
+        const currentSuggestionsContainer = getOrCreateWebhookSuggestionsContainer();
+
+        if (!appWebhooksData || !appWebhooksData.webhooks) {
+            currentSuggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        if (text.startsWith('/') && text.length >= 1) { // Show even with just '/'
+            const query = text.substring(1).toLowerCase();
+            const matchedWebhooks = appWebhooksData.webhooks.filter(wh =>
+                wh.name.toLowerCase().includes(query)
+            );
+
+            currentSuggestionsContainer.innerHTML = ''; // Clear previous suggestions
+            if (matchedWebhooks.length > 0) {
+                matchedWebhooks.forEach(webhook => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item'; // For styling and event delegation
+                    item.textContent = webhook.name;
+                    item.dataset.id = webhook.id;
+                    item.dataset.name = webhook.name; // For confirmation or display
+
+                    // Basic item styling
+                    item.style.padding = '8px 12px';
+                    item.style.cursor = 'pointer';
+                    item.style.borderBottom = '1px solid var(--border-color, #eee)';
+                    item.onmouseenter = () => item.style.backgroundColor = 'var(--hover-bg-color, #f0f0f0)';
+                    item.onmouseleave = () => item.style.backgroundColor = 'var(--input-bg-color, #fff)';
+
+                    currentSuggestionsContainer.appendChild(item);
+                });
+                currentSuggestionsContainer.style.width = promptInput.offsetWidth + 'px'; // Adjust width
+                currentSuggestionsContainer.style.top = (promptInput.offsetTop + promptInput.offsetHeight) + 'px'; // Adjust position
+                currentSuggestionsContainer.style.left = promptInput.offsetLeft + 'px';
+                currentSuggestionsContainer.style.display = 'block';
+            } else {
+                currentSuggestionsContainer.style.display = 'none';
+            }
+        } else {
+            currentSuggestionsContainer.innerHTML = '';
+            currentSuggestionsContainer.style.display = 'none';
+        }
     });
+
+    // Delegated click listener for suggestions
+    // Ensure this is only added once. If getOrCreate... is called multiple times,
+    // this might be re-added. Consider adding it outside if container is stable.
+    // For now, assuming getOrCreateWebhookSuggestionsContainer() is robust.
+    const sContainer = getOrCreateWebhookSuggestionsContainer(); // Get it once for listener
+    if (sContainer && !sContainer._suggestionClickHandlerAttached) {
+        sContainer.addEventListener('click', function(event) {
+            const target = event.target;
+            if (target.classList.contains('suggestion-item') && target.dataset.id) {
+                activeWebhookOverrideId = target.dataset.id;
+                promptInput.value = ''; // Clear the prompt input
+                updateActiveWebhookDisplay(); // Update the display above prompt
+
+                const currentSuggestionsContainer = getOrCreateWebhookSuggestionsContainer(); // Re-get in case it was recreated
+                currentSuggestionsContainer.innerHTML = ''; // Clear suggestions
+                currentSuggestionsContainer.style.display = 'none'; // Hide suggestions
+                promptInput.focus(); // Return focus to prompt
+            }
+        });
+        sContainer._suggestionClickHandlerAttached = true; // Mark as attached
+    }
+
+    // Hide suggestions if promptInput loses focus, unless a suggestion is clicked
+    // This requires careful handling to not hide before click on suggestion is processed.
+    // A common way is a small timeout on blur.
+    let blurTimeoutId = null;
+    promptInput.addEventListener('blur', () => {
+        // Use a timeout to delay hiding, allowing click event on suggestions to fire
+        blurTimeoutId = setTimeout(() => {
+            const currentSuggestionsContainer = getOrCreateWebhookSuggestionsContainer();
+            if (currentSuggestionsContainer) {
+                 currentSuggestionsContainer.style.display = 'none';
+            }
+        }, 150); // 150ms delay
+    });
+
+    // When focusing promptInput, if a click on a suggestion is about to happen,
+    // the blur event's timeout might hide the suggestions. Clear that timeout.
+    // Also, if it's a slash command, re-trigger input to show suggestions.
+    promptInput.addEventListener('focus', () => {
+        clearTimeout(blurTimeoutId);
+        // If text starts with '/', trigger input event to potentially show suggestions
+        if (promptInput.value.startsWith('/')) {
+            promptInput.dispatchEvent(new Event('input', { bubbles:true }));
+        }
+    });
+
 
     // Handle file attachment
     attachFileButton.addEventListener('click', () => {
@@ -509,7 +720,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Failed to save new default webhook:", error);
             appWebhooksData.defaultWebhookId = originalDefaultId; // Rollback
         }
-        renderWebhookList(); // Re-render in all cases
+        renderWebhookList();
+        updateActiveWebhookDisplay(); // Update display after setting default
     }
 
     async function handleDeleteWebhook(webhookId) {
@@ -555,7 +767,8 @@ document.addEventListener('DOMContentLoaded', () => {
             appWebhooksData.webhooks = originalWebhooks;
             appWebhooksData.defaultWebhookId = originalDefaultId;
         }
-        renderWebhookList(); // Re-render in all cases
+        renderWebhookList();
+        updateActiveWebhookDisplay(); // Update display after deletion
     }
 
     function renderWebhookList() {
@@ -663,6 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     appWebhooksData.defaultWebhookId = appWebhooksData.webhooks.length > 0 ? appWebhooksData.webhooks[0].id : null;
                 }
                 renderWebhookList(); // Re-render to reflect rollback
+                updateActiveWebhookDisplay(); // Also update display on rollback
             }
         });
     } else {
@@ -919,9 +1133,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             appWebhooksData = await initializeWebhooksData();
             console.log("Initialized appWebhooksData:", appWebhooksData);
+            updateActiveWebhookDisplay(); // Initial call after data is loaded
         } catch (error) {
             console.error("Error initializing webhooksData:", error);
             appWebhooksData = { webhooks: [], defaultWebhookId: null }; // Fallback
+            updateActiveWebhookDisplay(); // Also call in case of error to show appropriate message
         }
 
         // Initialize other storage dependent features like conversations
@@ -1544,41 +1760,61 @@ document.addEventListener('DOMContentLoaded', () => {
             // When sending to API, use the full context window - REPLACED with webhook logic
             // const responseObj = await callOpenRouterAPI(...);
 
-            // Retrieve the activeWebhookUrl using appWebhooksData
-            let activeWebhookUrl = null;
-            if (appWebhooksData && appWebhooksData.webhooks && appWebhooksData.webhooks.length > 0) {
-                const defaultWebhook = appWebhooksData.webhooks.find(wh => wh.id === appWebhooksData.defaultWebhookId);
-                if (defaultWebhook) {
-                    activeWebhookUrl = defaultWebhook.url;
-                } else if (appWebhooksData.webhooks.length > 0) {
-                    // Fallback to the first webhook if no default is set or found
-                    activeWebhookUrl = appWebhooksData.webhooks[0].url;
-                    console.warn("Default webhook not found or not set, using the first available webhook.");
-                    // Optionally, update defaultWebhookId here if desired, though probably better handled in UI
-                    // if (!appWebhooksData.defaultWebhookId && appWebhooksData.webhooks[0].id) {
-                    //    appWebhooksData.defaultWebhookId = appWebhooksData.webhooks[0].id;
-                    //    // Consider saving appWebhooksData here if auto-setting a default, though risky without user interaction
-                    // }
+            // Retrieve the finalWebhookUrl to be used for the API call
+            let finalWebhookUrl = null;
+            let webhookUsedInfo = { id: null, name: null, isOverride: false };
+
+            if (activeWebhookOverrideId) {
+                const overrideWebhook = appWebhooksData.webhooks.find(wh => wh.id === activeWebhookOverrideId);
+                if (overrideWebhook) {
+                    finalWebhookUrl = overrideWebhook.url;
+                    webhookUsedInfo = { id: overrideWebhook.id, name: overrideWebhook.name, isOverride: true };
+                } else {
+                    // Invalid override ID found, clear it and fall back to default.
+                    // This also updates the display for future interactions.
+                    console.warn("Invalid activeWebhookOverrideId found during send, clearing and using default.");
+                    activeWebhookOverrideId = null;
+                    updateActiveWebhookDisplay();
                 }
             }
 
-            if (!activeWebhookUrl) {
-                addMessageToChat("Please configure a Webhook URL in settings.", 'ai-message error');
-                thinkingMessage?.parentNode?.removeChild(thinkingMessage); // Remove thinking message
-                promptInput.disabled = false; // Re-enable input
-                updateSendButtonState(); // Update send button state
+            // If no valid override, try to use the default webhook
+            if (!finalWebhookUrl) {
+                if (appWebhooksData && appWebhooksData.webhooks && appWebhooksData.webhooks.length > 0) {
+                    const defaultWebhook = appWebhooksData.defaultWebhookId ?
+                                           appWebhooksData.webhooks.find(wh => wh.id === appWebhooksData.defaultWebhookId) :
+                                           null;
+                    if (defaultWebhook) {
+                        finalWebhookUrl = defaultWebhook.url;
+                        webhookUsedInfo = { id: defaultWebhook.id, name: defaultWebhook.name, isOverride: false };
+                    } else if (appWebhooksData.webhooks.length > 0) {
+                        // No default is set, but webhooks exist. Fallback to the first one.
+                        // updateActiveWebhookDisplay already shows a warning for this state.
+                        finalWebhookUrl = appWebhooksData.webhooks[0].url;
+                        webhookUsedInfo = { id: appWebhooksData.webhooks[0].id, name: appWebhooksData.webhooks[0].name, isOverride: false, isFallback: true };
+                        console.warn("No default webhook set. Using the first available webhook as a fallback for this send operation.");
+                    }
+                }
+            }
+
+            if (!finalWebhookUrl) {
+                addMessageToChat("No active webhook. Please configure or select a webhook in settings.", 'ai-message error');
+                thinkingMessage?.parentNode?.removeChild(thinkingMessage);
+                promptInput.disabled = false;
+                updateSendButtonState();
                 return;
             }
 
             const payload = {
                 chatInput: combinedMessage,
-                sessionId: currentConversationId
+                sessionId: currentConversationId,
+                webhookUsed: webhookUsedInfo // For logging or debugging on the server
             };
 
-            let responseObj = { content: '', reasoning: null }; // Initialize responseObj
+            let responseObj = { content: '', reasoning: null };
 
             try {
-                const response = await fetch(activeWebhookUrl, {
+                const response = await fetch(finalWebhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
