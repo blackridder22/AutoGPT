@@ -1292,10 +1292,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const payload = {
-                body: {
-                    chatInput: combinedMessage,
-                    sessionId: currentConversationId
-                }
+                chatInput: combinedMessage,
+                sessionId: currentConversationId
             };
 
             let responseObj = { content: '', reasoning: null }; // Initialize responseObj
