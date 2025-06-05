@@ -1321,12 +1321,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const data = await response.json();
-                if (data && data.input) {
-                    responseObj.content = data.input;
+                const AImessage = data.output; // Changed from data.input
+                if (AImessage) {
+                    responseObj.content = AImessage;
                     // Optional: If your webhook returns reasoning, extract it here
                     // responseObj.reasoning = data.reasoning || null;
                 } else {
-                    throw new Error("Invalid response from webhook: 'input' field missing.");
+                    throw new Error("Invalid response from webhook: 'output' field missing."); // Updated error message
                 }
 
             } catch (error) {
