@@ -38,6 +38,9 @@
         </div>
 
         <div class="prompt-area">
+            <div id="activeWebhookDisplay" style="display: none; margin-bottom: 5px; font-size: 0.9em; color: #888; text-align: center;">
+                <!-- JavaScript will populate this, e.g., "Using: MyWebhook [x]" -->
+            </div>
             <div class="input-container">
                 <div class="input-wrapper">
                     <textarea id="promptInput" placeholder="Message Auto GPT..."></textarea>
@@ -78,12 +81,19 @@
                 </div>
                 
                 <div class="settings-section">
-                    <h4>Webhook URL</h4>
+                    <h4>Manage Webhooks</h4>
                     <div class="setting-item">
-                        <label for="webhookUrlInput">Webhook URL:</label>
-                        <input type="text" id="webhookUrlInput" placeholder="Enter Webhook URL">
+                        <label for="newWebhookNameInput">Webhook Name:</label>
+                        <input type="text" id="newWebhookNameInput" placeholder="Enter a name for the webhook">
                     </div>
-                    <button id="saveWebhookUrlButton" class="save-button">Save Webhook URL</button>
+                    <div class="setting-item">
+                        <label for="newWebhookUrlInput">Webhook URL:</label>
+                        <input type="text" id="newWebhookUrlInput" placeholder="Enter the webhook URL">
+                    </div>
+                    <button id="addWebhookButton" class="save-button">Add Webhook</button>
+                    <div id="webhookListContainer" class="webhook-list-container" style="margin-top: 15px;">
+                        <!-- Webhook list will be populated here by JavaScript -->
+                    </div>
                 </div>
                 
                 <div class="settings-section">

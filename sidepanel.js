@@ -1,3 +1,6 @@
+// Global variable to store webhooks data
+let appWebhooksData = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const promptInput = document.getElementById('promptInput');
     const sendButton = document.getElementById('sendButton');
@@ -44,6 +47,64 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper function to generate hyphenless UUID
     function generateUUID() {
         return crypto.randomUUID().replace(/-/g, '');
+    }
+
+    async function initializeWebhooksData() {
+        const result = await new Promise(resolve => chrome.storage.local.get(['webhooksData', 'webhookUrl'], resolve));
+        let currentWebhooksData = result.webhooksData;
+        const oldWebhookUrl = result.webhookUrl; // Legacy single webhook URL
+
+        if (currentWebhooksData) {
+            if (typeof currentWebhooksData !== 'object' || currentWebhooksData === null) {
+                console.warn("Existing webhooksData is not an object. Reinitializing.");
+                currentWebhooksData = null;
+            } else {
+                if (!Array.isArray(currentWebhooksData.webhooks)) {
+                    console.warn("webhooksData.webhooks is not an array. Resetting.");
+                    currentWebhooksData.webhooks = [];
+                }
+                if (!currentWebhooksData.hasOwnProperty('defaultWebhookId')) {
+                    currentWebhooksData.defaultWebhookId = null;
+                } else if (currentWebhooksData.defaultWebhookId !== null && typeof currentWebhooksData.defaultWebhookId !== 'string') {
+                    console.warn("webhooksData.defaultWebhookId is not a string or null. Resetting to null.");
+                    currentWebhooksData.defaultWebhookId = null;
+                }
+                // If defaultWebhookId is set, ensure it exists in the webhooks array
+                if (currentWebhooksData.defaultWebhookId &&
+                    !currentWebhooksData.webhooks.find(wh => wh.id === currentWebhooksData.defaultWebhookId)) {
+                    console.warn("Default webhook ID does not exist in webhooks list. Resetting to null.");
+                    currentWebhooksData.defaultWebhookId = null;
+                }
+                console.log("Existing webhooksData found and validated:", currentWebhooksData);
+                return currentWebhooksData;
+            }
+        }
+
+        if (!currentWebhooksData && oldWebhookUrl) {
+            console.log("Old webhookUrl found, migrating:", oldWebhookUrl);
+            const newId = generateUUID();
+            currentWebhooksData = {
+                webhooks: [{
+                    id: newId,
+                    name: "Default Webhook",
+                    url: oldWebhookUrl
+                }],
+                defaultWebhookId: newId
+            };
+            await new Promise(resolve => chrome.storage.local.set({ webhooksData: currentWebhooksData }, resolve));
+            await new Promise(resolve => chrome.storage.local.remove('webhookUrl', resolve));
+            console.log("Migrated to new webhooksData:", currentWebhooksData);
+            return currentWebhooksData;
+        } else if (!currentWebhooksData) {
+            console.log("No valid webhook data, initializing fresh.");
+            currentWebhooksData = {
+                webhooks: [],
+                defaultWebhookId: null
+            };
+            await new Promise(resolve => chrome.storage.local.set({ webhooksData: currentWebhooksData }, resolve));
+            return currentWebhooksData;
+        }
+        return currentWebhooksData || { webhooks: [], defaultWebhookId: null }; // Fallback
     }
 
     // --- BEGIN Reasoning display feature ---
@@ -390,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsButton.addEventListener('click', () => {
         settingsModal.style.display = 'block';
         loadSettingsValues();
+        renderWebhookList(); // Render the list when settings are opened
     });
 
     closeButton.addEventListener('click', () => {
@@ -413,20 +475,199 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Save Webhook URL
-    saveWebhookUrlButton.addEventListener('click', () => {
-        const webhookUrl = webhookUrlInput.value.trim();
-        if (webhookUrl) {
-            chrome.storage.local.set({ webhookUrl: webhookUrl }, () => {
-                showToast('Webhook URL saved successfully!');
-            });
-        } else {
-            showToast('Webhook URL cannot be empty.', true);
-        }
-    });
+    // Save Webhook URL - This button (saveWebhookUrlButton) and its input (webhookUrlInput) are from the old single webhook UI.
+    // They will be removed from HTML. The new logic is handled by addWebhookButton and the new inputs.
+    // This listener can be removed.
+    // saveWebhookUrlButton.addEventListener('click', () => { ... });
 
-    // Save all API keys - REMOVED
-    // saveApiKeysButton.addEventListener('click', () => { ... });
+    // New Webhook Management Logic
+    const addWebhookButton = document.getElementById('addWebhookButton');
+    const newWebhookNameInput = document.getElementById('newWebhookNameInput');
+    const newWebhookUrlInput = document.getElementById('newWebhookUrlInput');
+
+    async function handleSetDefaultWebhook(webhookId) {
+        if (!appWebhooksData) {
+            showToast("Error: Webhook data not available.", true);
+            console.error("handleSetDefaultWebhook: appWebhooksData is missing.");
+            return;
+        }
+        const originalDefaultId = appWebhooksData.defaultWebhookId;
+        appWebhooksData.defaultWebhookId = webhookId;
+
+        try {
+            await new Promise((resolve, reject) => {
+                chrome.storage.local.set({ webhooksData: appWebhooksData }, () => {
+                    if (chrome.runtime.lastError) {
+                        return reject(chrome.runtime.lastError);
+                    }
+                    resolve();
+                });
+            });
+            showToast("Webhook set as default.");
+        } catch (error) {
+            showToast("Error setting default webhook. Please try again.", true);
+            console.error("Failed to save new default webhook:", error);
+            appWebhooksData.defaultWebhookId = originalDefaultId; // Rollback
+        }
+        renderWebhookList(); // Re-render in all cases
+    }
+
+    async function handleDeleteWebhook(webhookId) {
+        if (!confirm("Are you sure you want to delete this webhook?")) {
+            return;
+        }
+
+        if (!appWebhooksData || !appWebhooksData.webhooks) {
+            showToast("Error: Webhook data not available.", true);
+            console.error("handleDeleteWebhook: appWebhooksData or webhooks array is missing.");
+            return;
+        }
+
+        const originalWebhooks = JSON.parse(JSON.stringify(appWebhooksData.webhooks));
+        const originalDefaultId = appWebhooksData.defaultWebhookId;
+
+        // Filter out the webhook to be deleted
+        appWebhooksData.webhooks = appWebhooksData.webhooks.filter(wh => wh.id !== webhookId);
+
+        // Update default if the deleted one was the default
+        if (appWebhooksData.defaultWebhookId === webhookId) {
+            if (appWebhooksData.webhooks.length > 0) {
+                appWebhooksData.defaultWebhookId = appWebhooksData.webhooks[0].id; // Make the first one the new default
+            } else {
+                appWebhooksData.defaultWebhookId = null; // No webhooks left
+            }
+        }
+
+        try {
+            await new Promise((resolve, reject) => {
+                chrome.storage.local.set({ webhooksData: appWebhooksData }, () => {
+                    if (chrome.runtime.lastError) {
+                        return reject(chrome.runtime.lastError);
+                    }
+                    resolve();
+                });
+            });
+            showToast("Webhook deleted.");
+        } catch (error) {
+            showToast("Error deleting webhook. Please try again.", true);
+            console.error("Failed to save webhook deletion:", error);
+            // Rollback optimistic update
+            appWebhooksData.webhooks = originalWebhooks;
+            appWebhooksData.defaultWebhookId = originalDefaultId;
+        }
+        renderWebhookList(); // Re-render in all cases
+    }
+
+    function renderWebhookList() {
+        const listContainer = document.getElementById('webhookListContainer');
+        if (!listContainer) {
+            console.error("webhookListContainer not found in the DOM.");
+            return;
+        }
+        listContainer.innerHTML = ''; // Clear previous list
+
+        if (appWebhooksData && appWebhooksData.webhooks && appWebhooksData.webhooks.length > 0) {
+            const ul = document.createElement('ul');
+            ul.className = 'webhook-list'; // Add a class for potential styling
+
+            appWebhooksData.webhooks.forEach(webhook => {
+                const li = document.createElement('li');
+                li.className = 'webhook-item'; // For styling individual items
+                // Display the name and URL, and indication if it's default
+                li.innerHTML = `
+                    <div class="webhook-info">
+                        <strong>${webhook.name}</strong>
+                        ${webhook.id === appWebhooksData.defaultWebhookId ? '<span class="default-webhook-indicator">(Default)</span>' : ''}
+                        <br>
+                        <small class="webhook-url-display">${webhook.url}</small>
+                    </div>
+                    <div class="webhook-actions">
+                        <button data-id="${webhook.id}" class="set-default-webhook-btn" title="Set as Default" ${webhook.id === appWebhooksData.defaultWebhookId ? "disabled" : ""}>Set Default</button>
+                        <button data-id="${webhook.id}" class="delete-webhook-btn" title="Delete">Delete</button>
+                    </div>
+                `;
+                // Note: Actual functionality for these buttons will be added in Phase 2
+                // For now, they are just placeholders. The 'disabled' for Set Default is functional.
+                ul.appendChild(li);
+            });
+            listContainer.appendChild(ul);
+        } else {
+            listContainer.textContent = 'No webhooks configured. Add one above!';
+        }
+
+        // Event delegation for webhook actions
+        // Remove previous listener if it exists to avoid duplication
+        if (listContainer._clickHandler) {
+            listContainer.removeEventListener('click', listContainer._clickHandler);
+        }
+        // Define the new handler function
+        listContainer._clickHandler = function(event) {
+            const target = event.target;
+            if (target.classList.contains('set-default-webhook-btn') && !target.disabled) {
+                const webhookId = target.dataset.id;
+                handleSetDefaultWebhook(webhookId); // Call the new set default handler
+            } else if (target.classList.contains('delete-webhook-btn')) {
+                const webhookId = target.dataset.id;
+                handleDeleteWebhook(webhookId);
+            }
+        };
+        // Attach the new handler
+        listContainer.addEventListener('click', listContainer._clickHandler);
+    }
+
+    if (addWebhookButton && newWebhookNameInput && newWebhookUrlInput) {
+        addWebhookButton.addEventListener('click', async () => {
+            const name = newWebhookNameInput.value.trim();
+            const url = newWebhookUrlInput.value.trim();
+
+            if (!name || !url) {
+                showToast("Webhook name and URL cannot be empty.", true);
+                return;
+            }
+
+            try {
+                new URL(url); // Basic URL validation
+            } catch (e) {
+                showToast("Invalid Webhook URL format.", true);
+                return;
+            }
+
+            if (!appWebhooksData) {
+                console.error("appWebhooksData is not initialized. Cannot add webhook.");
+                showToast("Error: Webhook data not ready. Please try again.", true);
+                return;
+            }
+            if (!appWebhooksData.webhooks) { // Defensive initialization
+                appWebhooksData.webhooks = [];
+            }
+
+            const newWebhook = { id: generateUUID(), name: name, url: url };
+            appWebhooksData.webhooks.push(newWebhook);
+
+            if (!appWebhooksData.defaultWebhookId || appWebhooksData.webhooks.length === 1) {
+                appWebhooksData.defaultWebhookId = newWebhook.id;
+            }
+
+            try {
+                await new Promise(resolve => chrome.storage.local.set({ webhooksData: appWebhooksData }, resolve));
+                renderWebhookList();
+                newWebhookNameInput.value = '';
+                newWebhookUrlInput.value = '';
+                showToast('Webhook added successfully!');
+            } catch (error) {
+                console.error("Error saving webhook:", error);
+                showToast('Failed to save webhook.', true);
+                // Rollback optimistic update
+                appWebhooksData.webhooks = appWebhooksData.webhooks.filter(wh => wh.id !== newWebhook.id);
+                if (appWebhooksData.defaultWebhookId === newWebhook.id) {
+                    appWebhooksData.defaultWebhookId = appWebhooksData.webhooks.length > 0 ? appWebhooksData.webhooks[0].id : null;
+                }
+                renderWebhookList(); // Re-render to reflect rollback
+            }
+        });
+    } else {
+        console.warn("Webhook management UI elements (add button or inputs) not found. Add functionality will not work.");
+    }
 
     // Wallpaper selection
     for (const option of wallpaperOptions) {
@@ -524,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 'anthropicApiKey', // Removed
             // 'googleAIKey', // Removed
             // 'localAI', // Removed
-            'webhookUrl', // Added
+            // 'webhookUrl', // Removed - Handled by initializeWebhooksData and new UI
             'theme'
         ], (result) => {
             // Set user name
@@ -532,10 +773,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 userNameInput.value = result.userName;
             }
             
-            // Set Webhook URL
-            if (result.webhookUrl) {
-                webhookUrlInput.value = result.webhookUrl;
-            }
+            // Clear new webhook input fields when settings are opened
+            if (typeof newWebhookNameInput !== 'undefined' && newWebhookNameInput) newWebhookNameInput.value = '';
+            if (typeof newWebhookUrlInput !== 'undefined' && newWebhookUrlInput) newWebhookUrlInput.value = '';
+
+            // Set Webhook URL - REMOVED (old input field)
+            // if (result.webhookUrl) {
+            //     webhookUrlInput.value = result.webhookUrl;
+            // }
             
             // Set API keys (masked) - REMOVED
             // if (result.openRouterApiKey) { ... }
@@ -669,8 +914,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let supabaseClient = null;
     let storageSettings = { type: 'none' };
     
-    // Initialize storage on load
-    initializeStorage();
+    // Initialize storage on load (includes webhooks data now)
+    (async () => {
+        try {
+            appWebhooksData = await initializeWebhooksData();
+            console.log("Initialized appWebhooksData:", appWebhooksData);
+        } catch (error) {
+            console.error("Error initializing webhooksData:", error);
+            appWebhooksData = { webhooks: [], defaultWebhookId: null }; // Fallback
+        }
+
+        // Initialize other storage dependent features like conversations
+        // Ensure initializeStorage is defined before calling
+        if (typeof initializeStorage === "function") {
+            await initializeStorage();
+        } else {
+            console.error("initializeStorage function is not defined at the point of call in DOMContentLoaded setup.");
+            // As a fallback for conversation loading if initializeStorage is missing or not yet defined:
+            if (typeof loadOrCreateConversation === "function") {
+                 console.warn("Attempting to load/create conversation without full initializeStorage sequence.");
+                 await loadOrCreateConversation();
+            }
+        }
+    })();
     
     // Conversations Modal functionality
     conversationsButton.addEventListener('click', () => {
@@ -1278,13 +1544,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // When sending to API, use the full context window - REPLACED with webhook logic
             // const responseObj = await callOpenRouterAPI(...);
 
-            // Retrieve the webhookUrl from chrome.storage.local
-            const { webhookUrl } = await new Promise(resolve => {
-                chrome.storage.local.get(['webhookUrl'], result => resolve(result));
-            });
+            // Retrieve the activeWebhookUrl using appWebhooksData
+            let activeWebhookUrl = null;
+            if (appWebhooksData && appWebhooksData.webhooks && appWebhooksData.webhooks.length > 0) {
+                const defaultWebhook = appWebhooksData.webhooks.find(wh => wh.id === appWebhooksData.defaultWebhookId);
+                if (defaultWebhook) {
+                    activeWebhookUrl = defaultWebhook.url;
+                } else if (appWebhooksData.webhooks.length > 0) {
+                    // Fallback to the first webhook if no default is set or found
+                    activeWebhookUrl = appWebhooksData.webhooks[0].url;
+                    console.warn("Default webhook not found or not set, using the first available webhook.");
+                    // Optionally, update defaultWebhookId here if desired, though probably better handled in UI
+                    // if (!appWebhooksData.defaultWebhookId && appWebhooksData.webhooks[0].id) {
+                    //    appWebhooksData.defaultWebhookId = appWebhooksData.webhooks[0].id;
+                    //    // Consider saving appWebhooksData here if auto-setting a default, though risky without user interaction
+                    // }
+                }
+            }
 
-            if (!webhookUrl) {
-                addMessageToChat("Please set your Webhook URL in settings.", 'ai-message error');
+            if (!activeWebhookUrl) {
+                addMessageToChat("Please configure a Webhook URL in settings.", 'ai-message error');
                 thinkingMessage?.parentNode?.removeChild(thinkingMessage); // Remove thinking message
                 promptInput.disabled = false; // Re-enable input
                 updateSendButtonState(); // Update send button state
@@ -1299,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let responseObj = { content: '', reasoning: null }; // Initialize responseObj
 
             try {
-                const response = await fetch(webhookUrl, {
+                const response = await fetch(activeWebhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
