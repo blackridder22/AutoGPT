@@ -1306,32 +1306,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
-                    let errorMessage = `Webhook request failed: ${response.status} ${response.statusText}`;
+                    let errorText = `Webhook request failed: ${response.status} ${response.statusText}`; // Default error
                     try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error?.message || errorData.message || JSON.stringify(errorData) || errorMessage;
-                    } catch (e) {
-                        try {
-                            errorMessage = await response.text() || errorMessage;
-                        } catch (e2) {
-                            // ignore
+                        // Attempt to get more detailed error message from response body as text
+                        const serverErrorText = await response.text();
+                        if (serverErrorText) {
+                             errorText = `Error: ${response.status} ${serverErrorText}`;
                         }
+                    } catch (e) {
+                        // Ignore if reading response text fails, stick with the default errorText
+                        console.warn("Could not read error response text:", e);
                     }
-                    throw new Error(errorMessage);
+                    throw new Error(errorText);
                 }
 
-                const data = await response.json();
-                const AImessage = data.output; // Changed from data.input
-                if (AImessage) {
-                    responseObj.content = AImessage;
-                    // Optional: If your webhook returns reasoning, extract it here
-                    // responseObj.reasoning = data.reasoning || null;
+                const llmMessage = await response.text();
+                responseObj.reasoning = null; // Plain text has no reasoning
+
+                if (llmMessage || llmMessage === "") { // Allow empty string if it's a valid response
+                    responseObj.content = llmMessage;
                 } else {
-                    throw new Error("Invalid response from webhook: 'output' field missing."); // Updated error message
+                    // This case might be redundant if response.text() always resolves
+                    // to a string, even if empty. But as a safeguard:
+                    thinkingMessage?.parentNode?.removeChild(thinkingMessage); // remove thinking message
+                    throw new Error("Webhook returned an empty or invalid response.");
                 }
 
             } catch (error) {
-                 console.error("Webhook Error:", error);
+                 console.error("Webhook Error:", error); // This will catch errors from fetch itself or the new Error thrown
                 // Remove thinking message if it exists
                 try {
                     thinkingMessage?.parentNode?.removeChild(thinkingMessage);
