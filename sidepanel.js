@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const documentParser = new DocumentParser();
     console.log("Document parser initialized:", documentParser ? "success" : "failed");
 
+    // Helper function to generate hyphenless UUID
+    function generateUUID() {
+        return crypto.randomUUID().replace(/-/g, '');
+    }
+
     // --- BEGIN Reasoning display feature ---
     function injectReasoningStyles() {
         const styleId = 'reasoning-styles';
@@ -770,13 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load existing conversation or create a new one
     async function loadOrCreateConversation() {
-        if (storageSettings.type === 'none') {
-            // No storage, just start with empty conversation
-            currentConversationId = null;
-            clearChatHistory();
-            return;
-        }
-        
         try {
             // Try to load the last used conversation
             const savedConversationId = await new Promise(resolve => {
@@ -786,14 +784,40 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (savedConversationId) {
+                // If storage type is 'none' but we have a lastConversationId (e.g. from previous session before switching)
+                // and it's not a supabase ID (which are typically UUIDs without 'local_')
+                // we should treat it as a session-only ID for 'none' mode.
+                if (storageSettings.type === 'none' && savedConversationId && !savedConversationId.startsWith('local_') && !savedConversationId.includes('-')) { // Basic check for non-supabase, non-legacy local
+                    currentConversationId = savedConversationId;
+                    clearChatHistory(); // Start fresh for session-only
+                    console.log(`Continuing session-only conversation (no storage): ${currentConversationId}`);
+                    return;
+                } else if (storageSettings.type === 'none' && (!savedConversationId || savedConversationId.startsWith('local_'))) {
+                    // If type is 'none' and no valid session ID, or it's a legacy local ID, create new.
+                    const newId = await createNewConversation("New Conversation");
+                    currentConversationId = newId; // createNewConversation now handles setting this for 'none'
+                    return;
+                }
+                // For 'local' or 'supabase', attempt to load the conversation
                 await loadConversation(savedConversationId);
             } else {
-                // Create a new default conversation
-                await createNewConversation("New Conversation");
+                // No saved ID, or storage type is 'none' and we need a new session ID
+                const newId = await createNewConversation("New Conversation");
+                currentConversationId = newId; // createNewConversation handles setting this for 'none'
+                                             // For local/supabase, this ensures currentConversationId is set if loadConversation wasn't called.
             }
         } catch (error) {
-            console.error("Error loading conversation:", error);
-            currentConversationId = null;
+            console.error("Error in loadOrCreateConversation:", error);
+            // Fallback: try to create a new conversation to ensure app is usable
+            try {
+                const newId = await createNewConversation("New Conversation (Fallback)");
+                currentConversationId = newId;
+            } catch (fallbackError) {
+                console.error("Fallback conversation creation failed:", fallbackError);
+                currentConversationId = null; // Truly stuck
+                clearChatHistory();
+                addMessageToChat("Error initializing conversations. Please check settings or try restarting.", "ai-message error");
+            }
         }
     }
     
@@ -876,7 +900,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newId = conversation.id;
             } else if (storageSettings.type === 'local') {
                 // Create in local storage
-                newId = `local_${Date.now()}`;
+                newId = generateUUID(); // Use hyphenless UUID
                 const newConversation = {
                     id: newId,
                     title: title,
@@ -890,23 +914,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => {
                     chrome.storage.local.set({ [`conversation_${newId}`]: newConversation }, resolve);
                 });
-            } else {
-                // No storage
-                clearChatHistory();
-                return null;
+            } else { // No storage (storageSettings.type === 'none')
+                newId = generateUUID(); // Generate a UUID for the session
+                // currentConversationId is set outside this specific 'else' but before returning
+                // chrome.storage.local.set({ lastConversationId: newId }); // Also set outside
+                clearChatHistory(); // Clear UI for the new conversation
+                // For 'none' mode, we still want to track currentConversationId for the session
             }
             
-            // Set as current and save last used
+            // Set as current and save last used (applies to local and none storage types here)
             currentConversationId = newId;
             chrome.storage.local.set({ lastConversationId: newId });
             
-            // Clear the chat for new conversation
-            clearChatHistory();
+            // Clear the chat for new conversation (if not already cleared for 'none')
+            if (storageSettings.type !== 'none') {
+                 clearChatHistory();
+            }
             
             return newId;
         } catch (error) {
             console.error("Error creating conversation:", error);
-            throw error;
+            // In case of error, ensure we don't leave currentConversationId in an inconsistent state for 'none' mode
+            if (storageSettings.type === 'none') {
+                currentConversationId = generateUUID(); // Generate a new one for the session
+                chrome.storage.local.set({ lastConversationId: currentConversationId });
+                clearChatHistory();
+                console.warn("Error during createNewConversation for 'none' mode, created a fallback session ID.");
+                return currentConversationId; // Return the fallback ID
+            }
+            throw error; // Re-throw for supabase/local where error handling might be different
         }
     }
     
@@ -1095,6 +1131,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Don't proceed if extracting or if we have neither text nor file
         if (isExtracting || (!hasText && !hasFile)) {
             return;
+        }
+
+        // Ensure currentConversationId is set for the session
+        if (!currentConversationId) {
+            console.warn("currentConversationId was not set in handleSendMessage. Generating a new one for this session.");
+            currentConversationId = generateUUID();
+            chrome.storage.local.set({ lastConversationId: currentConversationId }, () => {
+                console.log('Fallback sessionId saved to lastConversationId:', currentConversationId);
+            });
+            // We don't call clearChatHistory() here to avoid disrupting UI if user was typing
+            // and expected continuity from a previous (but lost) session state.
+            // loadOrCreateConversation should handle initializing the UI for a new ID if needed.
         }
 
         // Hide welcome message when user sends first message
